@@ -1,0 +1,122 @@
+{
+  "batch_id": 42,
+  "label": "Wednesday 14:00 UTC - flash sale peak, EU checkout latency incident open",
+  "tickets": [
+    {
+      "id": "TKT-4477",
+      "customer_id": "northpeak",
+      "subject": "TOTAL OUTAGE - checkout completely down",
+      "body": "Checkout is COMPLETELY DOWN. Nothing is going through. We are losing thousands every minute and this is the third time this quarter. I want this escalated to your CTO IMMEDIATELY. Our renewal is in six weeks and I am documenting all of this. Customers are calling us. Fix it NOW.",
+      "category": "checkout_failure",
+      "stated_urgency": "critical",
+      "blocks_paying_workflow": true,
+      "submitted_at": "2026-08-19T13:12:00Z"
+    },
+    {
+      "id": "TKT-4479",
+      "customer_id": "bloomvine",
+      "subject": "Payments failing intermittently for EU customers mid-sale",
+      "body": "We are 6 hours into a 48 hour flash sale and roughly half of our EU checkouts are failing at the payment step. Customers see a generic error and abandon. Our own logs show a 503 from your payment gateway. This is the single biggest revenue day of our year and we are watching it drain away in real time. Happy to give you access to whatever you need.",
+      "category": "checkout_failure",
+      "stated_urgency": "high",
+      "blocks_paying_workflow": true,
+      "submitted_at": "2026-08-19T12:40:00Z"
+    },
+    {
+      "id": "TKT-4482",
+      "customer_id": "soloartisan",
+      "subject": "Odd rows in my orders export",
+      "body": "Hi, sorry to bother you. When I export my orders CSV I am seeing a handful of rows that are not mine - different shop name, different buyer names and what look like partial card details. It is probably just a display glitch on my end. No rush at all, I know you are busy. Thanks for everything, love the platform.",
+      "category": "data_integrity",
+      "stated_urgency": "low",
+      "blocks_paying_workflow": false,
+      "submitted_at": "2026-08-19T09:30:00Z"
+    },
+    {
+      "id": "TKT-4478",
+      "customer_id": "tidewater",
+      "subject": "Nightly inventory sync failed twice this week",
+      "body": "Our nightly inventory sync to the warehouse has now failed twice in four days - Monday and again last night. It is not blocking sales today because we have buffer stock, but if it fails again before Friday we will start overselling on about four hundred SKUs and we will have to cancel orders. Logs attached. No action needed today, but please do not let this sit until Friday.",
+      "category": "integration_api",
+      "stated_urgency": "medium",
+      "blocks_paying_workflow": false,
+      "submitted_at": "2026-08-19T08:05:00Z"
+    },
+    {
+      "id": "TKT-4480",
+      "customer_id": "kitecopper",
+      "subject": "URGENT!!! Storefront banner is the wrong blue",
+      "body": "URGENT!!!! After your update last night our storefront banner is rendering in the WRONG SHADE OF BLUE. It is supposed to be #1B4D6B and it is showing as #1B4D75. This is DESTROYING our brand identity and every hour it stays up is damage we cannot undo. This is a P0 for us. Please treat as CRITICAL!!!!",
+      "category": "ui_cosmetic",
+      "stated_urgency": "critical",
+      "blocks_paying_workflow": false,
+      "submitted_at": "2026-08-19T11:55:00Z"
+    },
+    {
+      "id": "TKT-4471",
+      "customer_id": "verdant",
+      "subject": "Following up again on webhook retry failures",
+      "body": "This is my fifth follow-up on this. Order webhooks to our fulfilment partner are silently dropped when the partner returns a 429 - your retry logic gives up after one attempt instead of backing off. We are manually reconciling around twenty orders a day, which is about two hours of someone's time daily. I understand there are bigger fires. I would just like to know whether this is ever going to be looked at.",
+      "category": "integration_api",
+      "stated_urgency": "medium",
+      "blocks_paying_workflow": false,
+      "submitted_at": "2026-08-14T22:00:00Z"
+    }
+  ],
+  "planted_conflicts": [
+    {
+      "id": "B1-C1",
+      "ticket_id": "TKT-4482",
+      "sources": ["crm", "telemetry"],
+      "description": "CRM says free tier, $0 ARR, lowest possible account value. Telemetry says confirmed cross-tenant data exposure affecting 340 merchants."
+    },
+    {
+      "id": "B1-C2",
+      "ticket_id": "TKT-4482",
+      "sources": ["ticket", "telemetry"],
+      "description": "Merchant states low urgency and calls it a display glitch. Telemetry confirms partial card data crossing a tenant boundary."
+    },
+    {
+      "id": "B1-C3",
+      "ticket_id": "TKT-4477",
+      "sources": ["history", "telemetry"],
+      "description": "History says this account confirmed severe on only 2 of 9 urgency claims. Telemetry independently corroborates a genuine outage this time."
+    },
+    {
+      "id": "B1-C4",
+      "ticket_id": "TKT-4479",
+      "sources": ["crm", "telemetry"],
+      "description": "ARR says NorthPeak ($480k) outranks Bloom & Vine ($36k). GMV at risk per hour says the reverse: $11.2k/h vs $8.4k/h. Two revenue signals disagreeing."
+    },
+    {
+      "id": "B1-C5",
+      "ticket_id": "TKT-4480",
+      "sources": ["ticket", "telemetry"],
+      "description": "Merchant states critical urgency in the strongest available language. Telemetry reports zero users affected and zero errors."
+    },
+    {
+      "id": "B1-C6",
+      "ticket_id": "TKT-4480",
+      "sources": ["ticket", "history"],
+      "description": "Stated critical, but category history says ui_cosmetic tickets are genuinely severe 4% of the time and this account confirms on 1 of 7 claims."
+    },
+    {
+      "id": "B1-C7",
+      "ticket_id": "TKT-4477",
+      "sources": ["ticket", "ticket"],
+      "description": "TKT-4477 and TKT-4479 share error signature PAYMT-503-EU in the same region and window. They are one platform incident reported twice, not two independent tickets."
+    },
+    {
+      "id": "B1-C8",
+      "ticket_id": "TKT-4471",
+      "sources": ["telemetry", "ledger"],
+      "description": "Current severity is genuinely low (24 users, no revenue at risk). The ledger says 112 hours waited across 6 skips, approaching the charter's 120h ceiling."
+    },
+    {
+      "id": "B1-C9",
+      "ticket_id": "TKT-4478",
+      "sources": ["ticket", "telemetry"],
+      "description": "Merchant reports a problem that is not yet happening: telemetry shows zero current impact, while the ticket describes a Friday deadline after which impact is large."
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+name: platform_health
+rationale: >
+  Tickets are symptoms; the platform is the patient. We rank by what a problem says
+  about systemic health rather than by who reported it, and we treat correlated
+  reports as one event rather than several complaints.
+weights: { revenue: 0.20, criticality: 0.40, fairness: 0.20, speed: 0.20 }
+revenue_mix: 0.4
+cost_summary: >
+  Genuinely isolated single-merchant problems — which are most problems — get less
+  attention than their owners think they deserve. Commercially blunt.

@@ -1,0 +1,57 @@
+{
+  "account_access": {
+    "median_hours": 9.1,
+    "n": 19,
+    "severe_rate": 0.47
+  },
+  "billing": {
+    "median_hours": 18.5,
+    "n": 26,
+    "severe_rate": 0.23
+  },
+  "checkout_failure": {
+    "median_hours": 4.8,
+    "n": 28,
+    "severe_rate": 0.82
+  },
+  "compliance": {
+    "median_hours": 13.3,
+    "n": 9,
+    "severe_rate": 0.67
+  },
+  "data_integrity": {
+    "median_hours": 7.1,
+    "n": 17,
+    "severe_rate": 0.71
+  },
+  "integration_api": {
+    "median_hours": 21.4,
+    "n": 31,
+    "severe_rate": 0.39
+  },
+  "payment_processing": {
+    "median_hours": 4.7,
+    "n": 22,
+    "severe_rate": 0.73
+  },
+  "performance": {
+    "median_hours": 13.2,
+    "n": 25,
+    "severe_rate": 0.28
+  },
+  "security": {
+    "median_hours": 2.1,
+    "n": 12,
+    "severe_rate": 0.92
+  },
+  "shipping_config": {
+    "median_hours": 47.1,
+    "n": 20,
+    "severe_rate": 0.1
+  },
+  "ui_cosmetic": {
+    "median_hours": 96.6,
+    "n": 51,
+    "severe_rate": 0.04
+  }
+}

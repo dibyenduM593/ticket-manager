@@ -1,0 +1,25 @@
+# The business declares its situation. The agent reasons about which values fit it.
+# Nothing in this file is learned. Nothing in state/ may write to it.
+#
+# `as_of` is the pipeline's clock. Waiting times are computed against this value,
+# never against datetime.now(), so golden tests hold and the demo is reproducible.
+as_of: "2026-08-19T14:00:00Z"
+
+business:
+  strategic_priority: enterprise_retention   # growth | cost_control | stability | enterprise_retention
+  funding_event:
+    type: series_b
+    weeks_away: 6
+  churn_pressure: high                       # low | medium | high
+  runway_months: 8
+
+operations:
+  system_load: 0.91                          # 0-1, platform-wide, batch-level not per-ticket
+  active_incident: true
+  incident_summary: "Checkout latency degraded, EU region (eu-west-1), flash-sale traffic peak"
+  agents_available: 3                        # capacity: this many tickets get served per batch
+  backlog_depth: 47
+
+commercial:
+  accounts_at_renewal: [northpeak]
+  sla_breaches_this_month: 2

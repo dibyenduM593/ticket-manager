@@ -1,0 +1,10 @@
+name: fairness_first
+rationale: >
+  A queue that never serves the back of the line is not a queue, it is a filter. We
+  pay down waiting debt first and accept that some large accounts wait behind smaller
+  ones who have already waited longer.
+weights: { revenue: 0.15, criticality: 0.25, fairness: 0.45, speed: 0.15 }
+revenue_mix: 0.5
+cost_summary: >
+  Fresh high-severity tickets queue behind stale low-severity ones. In an active
+  incident this is close to indefensible; outside one it is close to obviously right.

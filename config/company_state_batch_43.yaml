@@ -1,0 +1,24 @@
+# Batch 43 - the next morning's sweep of everything filed overnight. The incident is
+# mitigated but not closed, load has come off the peak, and one more SLA breach has
+# landed. Same shape as config/company_state.yaml; the point is that the situation is
+# an input that moves.
+as_of: "2026-08-20T06:00:00Z"
+
+business:
+  strategic_priority: enterprise_retention
+  funding_event:
+    type: series_b
+    weeks_away: 6
+  churn_pressure: high
+  runway_months: 8
+
+operations:
+  system_load: 0.74
+  active_incident: true
+  incident_summary: "Checkout latency mitigated in eu-west-1, monitoring; flash sale still running"
+  agents_available: 3
+  backlog_depth: 44
+
+commercial:
+  accounts_at_renewal: [northpeak]
+  sla_breaches_this_month: 3

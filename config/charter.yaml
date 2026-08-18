@@ -1,0 +1,81 @@
+# Non-negotiable floors. No posture can tune these, and the LLM cannot amend them.
+#
+# The charter is a FLOOR, not a preference. When a rule fires, the offending ticket is
+# promoted to the LOWEST rank that satisfies the rule — never straight to the top.
+# Minimum intervention keeps the override legible: you can see exactly what it bought.
+
+version: 1
+
+rules:
+  - id: R1
+    name: severity_never_below_cosmetic
+    statement: >
+      Active data loss or security exposure never ranks below a cosmetic issue, and is
+      never deferred past the capacity line. A confirmed exposure that nobody works on
+      today is the same as an unhandled exposure.
+    clauses:
+      - id: R1a
+        kind: rank_above_category
+        trigger_flags: [security_exposure, data_loss]
+        must_outrank_categories: [ui_cosmetic]
+      - id: R1b
+        kind: must_be_served
+        trigger_flags: [security_exposure, data_loss]
+
+  - id: R2
+    name: waiting_ceiling
+    statement: >
+      No ticket waits beyond 5 days regardless of tier. Fairness is a property of a
+      series of decisions, so this is the only rule that reads the ledger.
+    clauses:
+      - id: R2a
+        kind: must_be_served
+        trigger_waiting_hours_gte: 120
+
+  - id: R3
+    name: compliance_deadlines_are_hard
+    statement: >
+      Legal and compliance deadlines are hard constraints, not priorities. A GDPR
+      erasure clock does not negotiate with a revenue posture.
+    clauses:
+      - id: R3a
+        kind: must_be_served
+        trigger_compliance_deadline_hours_lte: 48
+
+  - id: R4
+    name: credibility_discount_is_clamped
+    statement: >
+      The credibility discount may dampen an unsupported claim but can never erase it.
+      A merchant with the worst possible track record still gets 30% of their stated
+      urgency, and independent evidence is never discounted at all.
+    clauses:
+      - id: R4a
+        kind: clamp
+        applies_to: credibility_multiplier
+        floor: 0.3
+        ceiling: 1.0
+
+# Declared severity floors.
+#
+# NOTE — this is the one place the charter reaches into an estimate, and it is
+# deliberate. A confirmed security exposure is severe BY DECLARATION, regardless of
+# how small its measured blast radius happens to be today. Two users' payment details
+# leaking is not a 0.05-severity event. Every other number feeding the scorer's
+# `observed` term is measured; these are asserted, and they are asserted here, in the
+# open, rather than being smuggled into estimation.py as a magic constant.
+severity_floors:
+  - when: { telemetry_flag: security_exposure }
+    floor: 1.0
+    reason: "confirmed exposure of data across a trust boundary"
+  - when: { telemetry_flag: data_loss }
+    floor: 1.0
+    reason: "irreversible loss of merchant or buyer data"
+  - when: { category: security }
+    floor: 0.90
+    reason: "security-category tickets are severe until proven otherwise"
+  - when: { compliance_deadline_hours_lte: 48 }
+    floor: 0.95
+    reason: "a statutory clock is running"
+
+# Categories the charter treats as cosmetic for rule R1a.
+cosmetic_categories: [ui_cosmetic]

@@ -1,0 +1,50 @@
+{
+  "northpeak": {
+    "name": "NorthPeak Outfitters",
+    "tier": "enterprise",
+    "arr": 480000,
+    "renewal_date": "2026-09-30",
+    "gmv_per_hour_baseline": 12000,
+    "account_notes": "Largest account. Renewal in 6 weeks. Escalates hard and often; the CSM flags most escalations as 'perception, not incident'."
+  },
+  "tidewater": {
+    "name": "Tidewater Supply",
+    "tier": "enterprise",
+    "arr": 310000,
+    "renewal_date": "2027-03-15",
+    "gmv_per_hour_baseline": 6400,
+    "account_notes": "B2B wholesale. Low ticket volume, high signal. Files early and describes problems in future tense."
+  },
+  "bloomvine": {
+    "name": "Bloom & Vine",
+    "tier": "growth",
+    "arr": 36000,
+    "renewal_date": "2026-11-01",
+    "gmv_per_hour_baseline": 900,
+    "account_notes": "DTC homeware. Running a 48h flash sale; live GMV is roughly 13x their baseline and dwarfs their ARR-implied importance."
+  },
+  "verdant": {
+    "name": "Verdant Home",
+    "tier": "growth",
+    "arr": 52000,
+    "renewal_date": "2027-01-20",
+    "gmv_per_hour_baseline": 1400,
+    "account_notes": "Credible reporter. Has been deprioritised repeatedly for eight weeks; CSM has raised it twice."
+  },
+  "soloartisan": {
+    "name": "soloartisan",
+    "tier": "free",
+    "arr": 0,
+    "renewal_date": null,
+    "gmv_per_hour_baseline": 40,
+    "account_notes": "Single-operator hobby store on the free plan. Files perhaps twice a year. Understates everything."
+  },
+  "kitecopper": {
+    "name": "Kite & Copper",
+    "tier": "starter",
+    "arr": 4800,
+    "renewal_date": "2026-10-12",
+    "gmv_per_hour_baseline": 180,
+    "account_notes": "High ticket volume, low resolution rate. Marks nearly everything critical."
+  }
+}

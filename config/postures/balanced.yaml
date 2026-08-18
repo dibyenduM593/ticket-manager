@@ -1,0 +1,10 @@
+name: balanced
+rationale: >
+  No axis dominates. This is the honest default when the situation does not clearly
+  argue for a stance — and it is worth saying plainly that equal weights are not
+  neutral, they are just a value judgment that declines to make itself interesting.
+weights: { revenue: 0.25, criticality: 0.25, fairness: 0.25, speed: 0.25 }
+revenue_mix: 0.6
+cost_summary: >
+  Does nothing especially wrong and nothing especially well. In an active incident it
+  under-reacts; in a quiet week it over-reacts to whoever shouts loudest.

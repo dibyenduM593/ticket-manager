@@ -1,0 +1,143 @@
+{
+  "TKT-4477": {
+    "users_affected": 1240,
+    "error_rate": 0.68,
+    "checkout_success_rate": 0.31,
+    "gmv_at_risk_per_hour": 8400,
+    "error_signature": "PAYMT-503-EU",
+    "region": "eu-west-1",
+    "first_error_at": "2026-08-19T12:18:00Z",
+    "notes": "Payment gateway returning 503 for eu-west-1. Corroborates the reported outage in full."
+  },
+  "TKT-4479": {
+    "users_affected": 610,
+    "error_rate": 0.52,
+    "checkout_success_rate": 0.44,
+    "gmv_at_risk_per_hour": 11200,
+    "error_signature": "PAYMT-503-EU",
+    "region": "eu-west-1",
+    "first_error_at": "2026-08-19T12:21:00Z",
+    "notes": "Same signature and region as TKT-4477, three minutes apart. GMV at risk exceeds NorthPeak's despite 13x smaller ARR - flash sale traffic."
+  },
+  "TKT-4482": {
+    "users_affected": 340,
+    "error_rate": 0.0,
+    "gmv_at_risk_per_hour": 0,
+    "error_signature": "DATA-XTNT-001",
+    "region": "us-east-1",
+    "first_error_at": "2026-08-19T04:02:00Z",
+    "security_exposure": true,
+    "notes": "Order export job is joining across tenant boundary. 340 merchants' rows, including PAN last-4 and buyer names, reachable from other merchants' exports. No error is raised because nothing is failing - the query is succeeding at the wrong scope."
+  },
+  "TKT-4478": {
+    "users_affected": 18,
+    "error_rate": 0.02,
+    "gmv_at_risk_per_hour": 0,
+    "error_signature": "SYNC-TIMEOUT",
+    "region": "us-east-1",
+    "first_error_at": "2026-08-17T02:14:00Z",
+    "notes": "Warehouse sync job timing out on large catalogues. Zero revenue impact at present; the impact described in the ticket is prospective."
+  },
+  "TKT-4480": {
+    "users_affected": 0,
+    "error_rate": 0.0,
+    "gmv_at_risk_per_hour": 0,
+    "notes": "No errors, no failed requests, no measurable user impact. Storefront rendering normally by every instrument we have."
+  },
+  "TKT-4471": {
+    "users_affected": 24,
+    "error_rate": 0.11,
+    "gmv_at_risk_per_hour": 0,
+    "error_signature": "WEBHOOK-429-NORETRY",
+    "region": "us-east-1",
+    "first_error_at": "2026-08-14T21:40:00Z",
+    "notes": "Confirmed: webhook delivery does not back off on 429. Small blast radius, entirely real, and unchanged for eight weeks."
+  },
+  "TKT-4493": {
+    "users_affected": 1,
+    "error_rate": 1.0,
+    "gmv_at_risk_per_hour": 0,
+    "error_signature": "GDPR-DELETE-500",
+    "region": "eu-west-1",
+    "first_error_at": "2026-08-17T11:30:00Z",
+    "notes": "Buyer-data deletion endpoint returns 500 for accounts with archived orders. One user affected. The exposure here is legal, not operational, and telemetry cannot see that."
+  },
+  "TKT-4491": {
+    "users_affected": 0,
+    "error_rate": 0.0,
+    "checkout_success_rate": 0.99,
+    "gmv_at_risk_per_hour": 0,
+    "p95_latency_ms": 2100,
+    "region": "us-east-1",
+    "notes": "Analytics dashboard p95 at 2.1s against a 1.5s target. Slow, not broken. Zero users blocked, checkout unaffected. No corroboration for the stated P0."
+  },
+  "TKT-4492": {
+    "users_affected": 3,
+    "error_rate": 0.004,
+    "checkout_success_rate": 0.99,
+    "gmv_at_risk_per_hour": 0,
+    "region": "us-east-1",
+    "notes": "Checkout completing normally for this merchant at 99% success. Three sessions did abandon at the payment step. Instruments cannot distinguish 'blocked' from 'changed their mind' - the declared blocks_paying_workflow flag is unsupported but not disproven."
+  },
+  "TKT-4490": {
+    "users_affected": 1,
+    "error_rate": 0.0,
+    "gmv_at_risk_per_hour": 0,
+    "error_signature": "INV-ROUNDING",
+    "region": "us-east-1",
+    "notes": "Invoice line-item rounding discrepancy of $14 on one invoice. Real, small, and entirely uninfluenced by anything written in the ticket body."
+  },
+  "TKT-4463": {
+    "users_affected": 47,
+    "error_rate": 0.09,
+    "gmv_at_risk_per_hour": 220,
+    "error_signature": "REFUND-SETTLE-LAG",
+    "region": "us-east-1",
+    "first_error_at": "2026-08-16T19:05:00Z",
+    "notes": "Refund settlement batch running on a 72h cycle instead of 24h since a config change on the 16th. Affects every merchant on the same settlement rail, not just this one."
+  },
+  "TKT-4501": {
+    "users_affected": 380,
+    "error_rate": 0.41,
+    "checkout_success_rate": 0.72,
+    "gmv_at_risk_per_hour": 5100,
+    "error_signature": "PROMO-VALIDATE-EXPIRED",
+    "region": "us-east-1",
+    "first_error_at": "2026-08-20T05:52:00Z",
+    "notes": "Promotion validator comparing against UTC midnight rather than store timezone. Codes are being rejected while valid. Corroborates the ticket exactly."
+  },
+  "TKT-4504": {
+    "users_affected": 1,
+    "error_rate": 0.0,
+    "gmv_at_risk_per_hour": 0,
+    "error_signature": "SESSION-NOREVOKE",
+    "region": "us-east-1",
+    "first_error_at": "2026-07-30T14:00:00Z",
+    "security_exposure": true,
+    "notes": "Access revocation does not invalidate existing sessions. One confirmed session used post-revocation with read access to buyer PII. Blast radius of one; severity is not a function of blast radius here."
+  },
+  "TKT-4500": {
+    "users_affected": 6,
+    "error_rate": 0.19,
+    "gmv_at_risk_per_hour": 0,
+    "error_signature": "LABEL-PDF-EMPTY",
+    "region": "us-east-1",
+    "first_error_at": "2026-08-18T13:20:00Z",
+    "notes": "PDF renderer racing on cold start; retry succeeds. Small, real, low consequence. The most credible merchant on the platform reporting something that is in fact minor."
+  },
+  "TKT-4503": {
+    "users_affected": 2,
+    "error_rate": 0.31,
+    "gmv_at_risk_per_hour": 0,
+    "error_signature": "UPLOAD-413-SILENT",
+    "region": "us-east-1",
+    "first_error_at": "2026-08-19T22:10:00Z",
+    "notes": "Uploads over 2MB rejected with a 413 that the client swallows. Zero impact today. The ticket's stated impact begins Monday, and no source models future impact."
+  },
+  "TKT-4502": {
+    "users_affected": 0,
+    "error_rate": 0.0,
+    "gmv_at_risk_per_hour": 0,
+    "notes": "Font size changed from 18px to 17px in the release. Confirmed real and confirmed cosmetic. No user impact by any instrument."
+  }
+}

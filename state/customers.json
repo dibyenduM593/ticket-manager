@@ -1,0 +1,230 @@
+{
+  "bloomvine": {
+    "confirmed_severe": 3,
+    "last_updated_batch": 41,
+    "observations": [
+      {
+        "batch": 5,
+        "claimed": "critical",
+        "ticket": "TKT-3018",
+        "verdict": true
+      },
+      {
+        "batch": 22,
+        "claimed": "high",
+        "ticket": "TKT-3014",
+        "verdict": false
+      },
+      {
+        "batch": 27,
+        "claimed": "critical",
+        "ticket": "TKT-3016",
+        "verdict": true
+      },
+      {
+        "batch": 32,
+        "claimed": "high",
+        "ticket": "TKT-3017",
+        "verdict": false
+      },
+      {
+        "batch": 34,
+        "claimed": "critical",
+        "ticket": "TKT-3015",
+        "verdict": true
+      }
+    ],
+    "urgency_claims": 5
+  },
+  "kitecopper": {
+    "confirmed_severe": 1,
+    "last_updated_batch": 41,
+    "observations": [
+      {
+        "batch": 3,
+        "claimed": "high",
+        "ticket": "TKT-3028",
+        "verdict": false
+      },
+      {
+        "batch": 19,
+        "claimed": "critical",
+        "ticket": "TKT-3029",
+        "verdict": false
+      },
+      {
+        "batch": 21,
+        "claimed": "high",
+        "ticket": "TKT-3031",
+        "verdict": false
+      },
+      {
+        "batch": 25,
+        "claimed": "critical",
+        "ticket": "TKT-3030",
+        "verdict": false
+      },
+      {
+        "batch": 32,
+        "claimed": "high",
+        "ticket": "TKT-3025",
+        "verdict": true
+      },
+      {
+        "batch": 32,
+        "claimed": "critical",
+        "ticket": "TKT-3027",
+        "verdict": false
+      },
+      {
+        "batch": 40,
+        "claimed": "critical",
+        "ticket": "TKT-3026",
+        "verdict": false
+      }
+    ],
+    "urgency_claims": 7
+  },
+  "northpeak": {
+    "confirmed_severe": 2,
+    "last_updated_batch": 41,
+    "observations": [
+      {
+        "batch": 6,
+        "claimed": "critical",
+        "ticket": "TKT-3009",
+        "verdict": false
+      },
+      {
+        "batch": 11,
+        "claimed": "critical",
+        "ticket": "TKT-3008",
+        "verdict": false
+      },
+      {
+        "batch": 13,
+        "claimed": "high",
+        "ticket": "TKT-3002",
+        "verdict": false
+      },
+      {
+        "batch": 20,
+        "claimed": "high",
+        "ticket": "TKT-3001",
+        "verdict": true
+      },
+      {
+        "batch": 20,
+        "claimed": "critical",
+        "ticket": "TKT-3003",
+        "verdict": false
+      },
+      {
+        "batch": 23,
+        "claimed": "high",
+        "ticket": "TKT-3005",
+        "verdict": true
+      },
+      {
+        "batch": 24,
+        "claimed": "critical",
+        "ticket": "TKT-3006",
+        "verdict": false
+      },
+      {
+        "batch": 29,
+        "claimed": "high",
+        "ticket": "TKT-3007",
+        "verdict": false
+      },
+      {
+        "batch": 40,
+        "claimed": "critical",
+        "ticket": "TKT-3004",
+        "verdict": false
+      }
+    ],
+    "urgency_claims": 9
+  },
+  "soloartisan": {
+    "confirmed_severe": 2,
+    "last_updated_batch": 41,
+    "observations": [
+      {
+        "batch": 22,
+        "claimed": "critical",
+        "ticket": "TKT-3024",
+        "verdict": true
+      },
+      {
+        "batch": 36,
+        "claimed": "critical",
+        "ticket": "TKT-3023",
+        "verdict": true
+      }
+    ],
+    "urgency_claims": 2
+  },
+  "tidewater": {
+    "confirmed_severe": 3,
+    "last_updated_batch": 41,
+    "observations": [
+      {
+        "batch": 2,
+        "claimed": "high",
+        "ticket": "TKT-3011",
+        "verdict": false
+      },
+      {
+        "batch": 4,
+        "claimed": "critical",
+        "ticket": "TKT-3010",
+        "verdict": true
+      },
+      {
+        "batch": 5,
+        "claimed": "high",
+        "ticket": "TKT-3012",
+        "verdict": true
+      },
+      {
+        "batch": 14,
+        "claimed": "critical",
+        "ticket": "TKT-3013",
+        "verdict": true
+      }
+    ],
+    "urgency_claims": 4
+  },
+  "verdant": {
+    "confirmed_severe": 3,
+    "last_updated_batch": 41,
+    "observations": [
+      {
+        "batch": 5,
+        "claimed": "high",
+        "ticket": "TKT-3022",
+        "verdict": true
+      },
+      {
+        "batch": 7,
+        "claimed": "critical",
+        "ticket": "TKT-3021",
+        "verdict": false
+      },
+      {
+        "batch": 14,
+        "claimed": "high",
+        "ticket": "TKT-3019",
+        "verdict": true
+      },
+      {
+        "batch": 38,
+        "claimed": "high",
+        "ticket": "TKT-3020",
+        "verdict": true
+      }
+    ],
+    "urgency_claims": 4
+  }
+}

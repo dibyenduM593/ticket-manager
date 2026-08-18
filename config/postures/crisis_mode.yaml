@@ -1,0 +1,11 @@
+name: crisis_mode
+rationale: >
+  The platform is the product. During an active incident, blast radius outranks the
+  invoice attached to it: a broken checkout is worth the same to us whoever is holding
+  it, because the thing failing is ours. Revenue still counts, but as money bleeding
+  now, not as money contracted last year.
+weights: { revenue: 0.15, criticality: 0.55, fairness: 0.15, speed: 0.15 }
+revenue_mix: 0.25              # lean hard on live GMV at risk, not on ARR
+cost_summary: >
+  Large accounts with genuine but low-blast-radius problems get parked. Relationship
+  damage is deferred rather than avoided, and it comes due at renewal.

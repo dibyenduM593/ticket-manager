@@ -1,0 +1,11 @@
+name: speed_optimised
+rationale: >
+  With three agents against a backlog of forty-seven, throughput is the constraint.
+  Clearing four cheap tickets buys more total relief than clearing one expensive one,
+  and a shrinking queue is itself a fairness mechanism.
+weights: { revenue: 0.15, criticality: 0.25, fairness: 0.15, speed: 0.45 }
+revenue_mix: 0.6
+cost_summary: >
+  Systematically starves slow-but-serious work. Anything that takes a day to fix never
+  reaches the top of the list, which is exactly backwards for the issues that matter
+  most. This posture optimises the metric it is measured by.

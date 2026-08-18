@@ -1,0 +1,10 @@
+name: revenue_first
+rationale: >
+  Enterprise churn is existential this quarter. We accept slower service to the free
+  tier as the price of protecting the base. If we lose a top-five account before the
+  raise, the fairness we bought is fairness inside a smaller company.
+weights: { revenue: 0.45, criticality: 0.25, fairness: 0.15, speed: 0.15 }
+revenue_mix: 0.75              # lean hard on ARR: the relationship, not today's till
+cost_summary: >
+  Free and starter merchants wait. Slow-burning correctness problems on small accounts
+  are systematically deferred, and the fairness ledger grows faster than it drains.

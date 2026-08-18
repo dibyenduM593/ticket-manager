@@ -1,0 +1,26 @@
+# Batch 44 - Thursday morning. Incident closed, sale over, load normal. Two agents
+# rather than three, because one is on the incident write-up.
+#
+# Nothing about the ethics changed; the situation did. The posture advisor should
+# reach a different recommendation from the same charter and the same six postures,
+# and if it does not, that is worth knowing.
+as_of: "2026-08-20T14:00:00Z"
+
+business:
+  strategic_priority: enterprise_retention
+  funding_event:
+    type: series_b
+    weeks_away: 5
+  churn_pressure: high
+  runway_months: 8
+
+operations:
+  system_load: 0.42
+  active_incident: false
+  incident_summary: null
+  agents_available: 2
+  backlog_depth: 39
+
+commercial:
+  accounts_at_renewal: [northpeak]
+  sla_breaches_this_month: 3

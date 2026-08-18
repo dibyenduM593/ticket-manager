@@ -1,0 +1,89 @@
+{
+  "batch_id": 44,
+  "label": "Thursday 14:00 UTC - post-incident, sale ended, renewal week for NorthPeak",
+  "as_of": "2026-08-20T14:00:00Z",
+  "tickets": [
+    {
+      "id": "TKT-4501",
+      "customer_id": "northpeak",
+      "subject": "Discount codes not applying at checkout",
+      "body": "Since about 06:00 UTC our seasonal discount codes are being rejected at checkout with 'code not valid'. They are valid, they are in date, and they worked yesterday. Buyers are completing checkout at full price or abandoning. I have attached six order IDs. I know I have used up a lot of goodwill with your team this quarter. This one is real.",
+      "category": "checkout_failure",
+      "stated_urgency": "high",
+      "blocks_paying_workflow": true,
+      "submitted_at": "2026-08-20T07:10:00Z"
+    },
+    {
+      "id": "TKT-4504",
+      "customer_id": "tidewater",
+      "subject": "Staff account still has access three weeks after offboarding",
+      "body": "We removed a staff member's admin access on 30 July when they left. They logged in successfully this morning and were able to view our full buyer list. Their session appears never to have been invalidated. We need this closed and we need to know what they could see, for our own disclosure obligations.",
+      "category": "security",
+      "stated_urgency": "high",
+      "blocks_paying_workflow": false,
+      "submitted_at": "2026-08-20T08:15:00Z"
+    },
+    {
+      "id": "TKT-4500",
+      "customer_id": "soloartisan",
+      "subject": "Shipping label PDFs are blank sometimes",
+      "body": "About one in five shipping label PDFs downloads blank. I just download it again and it usually works the second time, so it is more annoying than anything. Mentioning it in case it is a sign of something bigger. Genuinely no rush.",
+      "category": "shipping_config",
+      "stated_urgency": "low",
+      "blocks_paying_workflow": false,
+      "submitted_at": "2026-08-20T06:45:00Z"
+    },
+    {
+      "id": "TKT-4503",
+      "customer_id": "verdant",
+      "subject": "Product images failing to upload over 2MB",
+      "body": "Uploads of product images above about 2MB fail silently - no error, the image just never appears. We have a 300 product catalogue refresh scheduled for next week and we cannot start it until this works. Not urgent today, blocking from Monday.",
+      "category": "integration_api",
+      "stated_urgency": "medium",
+      "blocks_paying_workflow": false,
+      "submitted_at": "2026-08-20T08:40:00Z"
+    },
+    {
+      "id": "TKT-4502",
+      "customer_id": "kitecopper",
+      "subject": "CRITICAL - product page font is 1px too small",
+      "body": "The product title font on our storefront is rendering at 17px instead of 18px after your release. This is CRITICAL for our brand and we need it fixed TODAY. Our designer is extremely upset. Please escalate. Also still waiting on the blue thing from yesterday.",
+      "category": "ui_cosmetic",
+      "stated_urgency": "critical",
+      "blocks_paying_workflow": false,
+      "submitted_at": "2026-08-20T08:05:00Z"
+    }
+  ],
+  "planted_conflicts": [
+    {
+      "id": "B3-C1",
+      "ticket_id": "TKT-4501",
+      "sources": ["history", "telemetry"],
+      "description": "The chronic inflator files a measured, evidenced ticket and explicitly acknowledges their own track record. Credibility is still 0.27 and telemetry still corroborates - the discount must not punish an honest filing."
+    },
+    {
+      "id": "B3-C2",
+      "ticket_id": "TKT-4504",
+      "sources": ["ticket", "crm"],
+      "description": "Security category floor applies regardless of the fact that this merchant's account is not at renewal and files rarely."
+    },
+    {
+      "id": "B3-C3",
+      "ticket_id": "TKT-4500",
+      "sources": ["ticket", "history"],
+      "description": "The most credible merchant on the platform (0.75) states low urgency on something that is genuinely low urgency. High credibility must not become automatic promotion."
+    },
+    {
+      "id": "B3-C4",
+      "ticket_id": "TKT-4503",
+      "sources": ["ticket", "telemetry"],
+      "description": "Zero current impact, blocking impact from Monday. The system has no field for 'becomes urgent on a date' and must say so rather than pretend otherwise."
+    },
+    {
+      "id": "B3-C5",
+      "ticket_id": "TKT-4502",
+      "sources": ["ticket", "history"],
+      "description": "Second consecutive batch of stated-critical cosmetic tickets from the same account. Credibility should already have absorbed this; the discount is doing its job quietly."
+    }
+  ]
+}

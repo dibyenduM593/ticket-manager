@@ -1,0 +1,37 @@
+# How units become worth.
+#
+# estimation.py emits natural units: dollars, hours, users, error rates.
+# This file declares how those units convert into dimensionless value in [0,1].
+# That conversion is a value judgment, so it lives here, declared, and never in
+# estimation.py and never learned from history.
+#
+# The line: normalising EVIDENCE to severity is estimation (how bad is this, factually).
+# Normalising MONEY to worth is valuation (how much do we care, by declaration).
+
+revenue:
+  # Account value: what the relationship is worth, independent of today.
+  tier_value:
+    enterprise: 1.0
+    growth: 0.6
+    starter: 0.3
+    free: 0.1
+  arr_full_scale: 500000        # USD ARR that saturates the ARR term
+  tier_share: 0.4               # blend: tier_share * tier_value + (1-tier_share) * arr_norm
+
+  # GMV at risk: what is bleeding right now. Disagrees with ARR during a flash sale.
+  gmv_full_scale: 12000         # USD/hour at risk that saturates the GMV term
+
+  # Share of the revenue component given to account value vs live GMV.
+  # Postures may override this via `revenue_mix`. This is the ARR-vs-GMV dial, and
+  # it is the sharpest value choice in the file: 1.0 says "protect the relationship",
+  # 0.0 says "stop the bleeding".
+  default_mix: 0.6
+
+fairness:
+  waiting_ceiling_hours: 120    # matches charter R2; debt saturates at the ceiling
+  skip_full_scale: 8            # times_skipped that saturates the skip term
+
+speed:
+  # Quick wins score high. Log scale, because the difference between 1h and 4h
+  # matters far more than between 90h and 96h.
+  hours_full_scale: 96
