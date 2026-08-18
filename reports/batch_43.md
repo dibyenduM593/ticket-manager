@@ -92,9 +92,9 @@ What the rejected postures would have done differently, and what that costs.
 |---|---|---|---|---|
 | `balanced` | `TKT-4463` | 1 | 5 | bloomvine is served this batch instead of waiting; costs a served slot to whoever is displaced |
 | `balanced` | `TKT-4492` | 4 | 1 | tidewater is deferred instead of served |
-| `crisis_mode` | `TKT-4463` | 1 | 5 | bloomvine is served this batch instead of waiting; costs a served slot to whoever is displaced |
+| `crisis_mode` | `TKT-4463` | 2 | 5 | bloomvine is served this batch instead of waiting; costs a served slot to whoever is displaced |
 | `crisis_mode` | `TKT-4492` | 4 | 1 | tidewater is deferred instead of served |
-| `fairness_first` | `TKT-4463` | 1 | 5 | bloomvine is served this batch instead of waiting; costs a served slot to whoever is displaced |
+| `fairness_first` | `TKT-4463` | 2 | 5 | bloomvine is served this batch instead of waiting; costs a served slot to whoever is displaced |
 | `fairness_first` | `TKT-4492` | 4 | 1 | tidewater is deferred instead of served |
 | `platform_health` | `TKT-4463` | 1 | 5 | bloomvine is served this batch instead of waiting; costs a served slot to whoever is displaced |
 | `platform_health` | `TKT-4492` | 4 | 1 | tidewater is deferred instead of served |

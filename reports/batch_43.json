@@ -536,7 +536,7 @@
     {
       "cost_sentence": "bloomvine is served this batch instead of waiting; costs a served slot to whoever is displaced",
       "posture": "crisis_mode",
-      "rank_here": 1,
+      "rank_here": 2,
       "rank_under_chosen": 5,
       "ticket_id": "TKT-4463"
     },
@@ -550,7 +550,7 @@
     {
       "cost_sentence": "bloomvine is served this batch instead of waiting; costs a served slot to whoever is displaced",
       "posture": "fairness_first",
-      "rank_here": 1,
+      "rank_here": 2,
       "rank_under_chosen": 5,
       "ticket_id": "TKT-4463"
     },

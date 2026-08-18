@@ -283,7 +283,7 @@ Built:
   append-only decision log
 - Multi-batch sequential run, planted-conflict eval, stability harness, and a
   one-command regeneration of every committed artefact
-- 143 tests: deterministic core, LLM contract (including hallucinated-entity and
+- 147 tests: deterministic core, LLM contract (including hallucinated-entity and
   hostile-response cases), behavioural guarantees, and the eval and audit themselves
 - CI on 3.11 and 3.13 with **no API key configured**, so any accidental reach for the
   network fails there rather than on a reviewer's machine. It also reseeds from the
