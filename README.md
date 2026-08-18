@@ -40,20 +40,41 @@ Score one batch under all six value postures, side by side:
 python -m triage compare --batch data/batches/batch_1.json
 ```
 
+Run all three batches in sequence — fairness debt carries between them, which is the
+only way it can be observed at all — then audit what the postures actually did:
+
+```bash
+python -m triage run --all --no-llm
+```
+
 Interrogate any past decision, including its counterfactuals:
 
 ```bash
 python -m triage why TKT-4471
 ```
 
-Regenerate the synthetic history and derived state:
+Regenerate every committed artefact from a clean seed, in one command:
 
 ```bash
-python scripts/seed_history.py
+python scripts/run_demo.py
 ```
 
 With an API key in `.env` (see `.env.example`), drop `--no-llm` for the full pipeline:
 conflict detection, posture advice, four adversarial critics, and adjudication.
+
+### Every command
+
+| Command | What it does | Needs a key |
+|---|---|---|
+| `triage plan` | reads company state, ranks all six postures for it, names the cost | no (`--no-llm`) |
+| `triage run --batch ...` | the full pipeline on one batch | no (`--no-llm`) |
+| `triage run --all` | every batch in sequence, then the audit | no (`--no-llm`) |
+| `triage compare --batch ...` | six postures side by side | never |
+| `triage why TKT-4471` | one decision, its inputs and its counterfactuals | never |
+| `triage audit` | what the posture did across every batch run so far | never |
+| `triage eval` | conflict recall against the planted labels | no (`--no-llm`) |
+| `triage stability --runs 10` | what moves when the same batch is rerun | no (`--no-llm`) |
+| `scripts/record_cassettes.py` | records cassettes so `--replay` works | **yes** |
 
 ---
 
@@ -108,9 +129,98 @@ is a floor, not a preference.
 
 ---
 
+## What the measurements say
+
+Everything in this section was produced by `python scripts/run_demo.py` and is
+committed in [`reports/`](reports/). **Every number below is from the deterministic
+path**, because this repo has no API key attached to it. Each report carries a banner
+naming the seven stages that did not execute, and the eval and stability output both
+refuse to print a number without saying which detector produced it.
+
+### Conflict detection: 9 / 21
+
+The only place in this project the word *recall* is honest. We cannot know the right
+ranking — the brief's premise is that no such thing exists — but we do know which
+contradictions we authored, because we wrote all 21 of them into `planted_conflicts`
+in the batch files. Nothing in `src/triage/llm/` reads that field, and
+[a test asserts it](tests/test_eval.py).
+
+```
+recall            9/21  (43%)   planted conflicts found
+  of which exact  6/21  (29%)   same ticket AND same source pair
+unmatched         2 detections across 11 total
+```
+
+The rule-based fallback finds the contradictions that are arithmetic — a stated
+urgency far above the measured one, a declared blocking flag telemetry does not
+support, a confirmed exposure on a $0 account. It misses every contradiction that
+requires holding two sources in mind at once:
+
+- **`B1-C4`** — ARR says NorthPeak ($480k) outranks Bloom & Vine ($36k); GMV-at-risk
+  says the reverse, $11.2k/h against $8.4k/h. Two revenue signals disagreeing.
+- **`B1-C7`** — two tickets sharing error signature `PAYMT-503-EU` are one platform
+  incident reported twice, not two independent tickets.
+- **`B2-C4`** — the prompt-injection attempt. The scorer is immune to it either way,
+  but the fallback detector does not *notice* it.
+- **`B3-C3`** — the most credible merchant on the platform stating low urgency about
+  something genuinely low. High credibility must not become automatic promotion.
+
+That gap is the argument for the LLM stage, stated as a number rather than as a
+paragraph. Closing it is what the recorded-cassette run is for.
+
+Unmatched detections are reported as candidates, not as false positives: 21 is a lower
+bound on the conflicts present, not a census. Calling an unlabelled detection wrong
+would assume we thought of everything.
+
+### Stability: 10 / 10, and it does not mean much yet
+
+```
+identical orderings   10/10   (1 distinct ordering)
+stable prefix         ranks 1-6 identical in every run
+```
+
+The deterministic core is stable by construction, so this is a control, not a result:
+it confirms the harness measures the pipeline and not the ledger (ten runs that each
+accrued fairness debt would drift). The number worth reporting is the same command
+with cassettes recorded, and this repo cannot produce it yet.
+
+The harness already reports the things a bare agreement percentage would hide: which
+ranks moved, whether the *served set* changed (a swap inside the served three is
+cosmetic; a swap across the capacity line is not), and whether the posture,
+conflict count, and adjudicator's mind-change varied while the ordering held still.
+
+### The audit found a real breach
+
+Across the three-batch sequence, under the postures the advisor picked for each
+situation:
+
+| tier | median wait | worst | served | deferred |
+|---|---|---|---|---|
+| enterprise | 6.4h | 14.3h | 4 | 2 |
+| free | 5.9h | 7.2h | 1 | 1 |
+| growth | 41.8h | 128.0h | 3 | 3 |
+| starter | 5.9h | 13.1h | 0 | 3 |
+
+> **BREACHED.** Worst observed wait is 5.3 days against a charter ceiling of 5 days.
+> The charter promotes on the batch *after* a ticket crosses the line, because
+> promotion happens at batch boundaries and the ticket crossed between them. The rule
+> caught it; it did not prevent it.
+
+This is the system reporting its own failure, and it is a genuine one: `TKT-4471`
+was force-promoted in batch 43 at 128 hours, eight hours past a ceiling that says
+120. A ceiling enforced only at batch boundaries is a ceiling you land on rather than
+one you stop below. Fixing it means promoting on *projected* wait at the next
+boundary, or processing arrivals as a stream — neither is built, and the audit says
+so rather than rounding the finding down to "approaching".
+
+`starter` tier at zero served over three batches is the other finding worth sitting
+with. It is what `revenue_first` is *for*, which is exactly why the audit states it.
+
+---
+
 ## Status
 
-Built so far — the deterministic core and the LLM layer:
+Built:
 
 - Estimation / valuation separation, scorer, charter enforcement, capacity-aware
   fairness debt, correlation clustering
@@ -121,17 +231,24 @@ Built so far — the deterministic core and the LLM layer:
 - Conflict detection, posture advisor, four adversarial critics, adjudication
 - Report renderer (markdown + JSON), counterfactual regret table, posture audit,
   append-only decision log
-- 111 tests: deterministic core, LLM contract (including hallucinated-entity and
-  hostile-response cases), and behavioural guarantees
+- Multi-batch sequential run, planted-conflict eval, stability harness, and a
+  one-command regeneration of every committed artefact
+- 143 tests: deterministic core, LLM contract (including hallucinated-entity and
+  hostile-response cases), behavioural guarantees, and the eval and audit themselves
 
-Not done yet:
+Not done:
 
-- **Cassettes are not recorded.** `--replay` works but has nothing to serve; the
-  contract tests currently run against a programmable test double instead. Recording
-  needs an API key.
-- Planted-conflict recall eval, and the 10× stability measurement.
-- Committed example reports — the ones generated so far are from degraded (`--no-llm`)
-  runs and would misrepresent the full pipeline.
+- **Cassettes are not recorded, so `--replay` has nothing to serve.** Recording is one
+  command (`python scripts/record_cassettes.py`) and needs an API key this repo does
+  not have. Hand-writing files into `tests/cassettes/` would make `--replay` a
+  re-enactment rather than a recording, so it is not done. Contract tests run against
+  a programmable test double instead, which tests a different and also necessary
+  thing: that the pipeline survives responses the model *might* produce — hallucinated
+  ticket IDs, duplicate entries, out-of-range ranks — which no recording contains.
+- **Every committed number is therefore from the deterministic path.** The interesting
+  measurement — conflict recall with the LLM detector, and stability with real model
+  calls — needs `scripts/record_cassettes.py` run once.
+- Routing and human handoff are stubbed, as permitted.
 
 ### Known limitations
 
@@ -140,12 +257,44 @@ Not done yet:
   *estimates* but never its *values*.
 - History is synthetic, by design: real data cannot set up a demonstration of a
   credibility discount, because it does not know what you are about to demonstrate.
-- Batch, not stream. A ticket arriving mid-batch that engages a charter rule should
-  preempt immediately; anything else waits for the next boundary. Described, not built.
+- Batch, not stream — and it costs something measurable. A ticket arriving mid-batch
+  that engages a charter rule should preempt immediately; anything else waits for the
+  next boundary. That is described, not built, and the audit above shows the bill:
+  the 5-day waiting ceiling was crossed by 8 hours because promotion can only happen
+  at a boundary the ticket had already passed. True streaming means an
+  arrival-triggered re-rank with a hysteresis threshold so the queue does not thrash.
 - Capacity is treated as fungible — a billing specialist cannot actually take a
   checkout bug.
 - Per-ticket contractual SLA deadlines are carried as a field but not enforced. They
   are distinct from fairness: a contractual clock is not a moral one.
+- `state/` is a working directory, not a fixture. Every run mutates it. The committed
+  copy is the seeded baseline; `python scripts/seed_history.py` restores it, and
+  `scripts/run_demo.py` does that for you before every regeneration.
+- Cassette keys hash the exact prompts, so any edit to `llm/prompts.py` invalidates
+  every cassette. Deliberate — a cassette that survived a prompt change would be
+  replaying an answer to a question the system no longer asks — but it means
+  `--replay` degrades quietly to the deterministic path after a prompt edit, and you
+  find out from the degraded banner rather than from an error.
+
+---
+
+## What I would do next
+
+- **Record the cassettes and rerun both measurements.** The 9/21 recall figure is the
+  fallback detector's, and the whole argument for the LLM stage is that it closes that
+  gap. Right now that argument is a hypothesis with a number attached to its null case.
+- **Promote on projected wait**, not elapsed wait, so the charter ceiling stops being
+  a line the queue lands on.
+- Randomised ranking holdout on a small slice, to measure the causal effect of
+  prioritisation — the only way any of this becomes falsifiable.
+- Augment a public dataset with held-out labels to validate the **estimation** layer
+  only (Spearman correlation of extracted severity against human priority), never the
+  valuation layer. Importing a dataset's priority labels would import a ground truth
+  the brief's premise says does not exist.
+- Human overrides are the missing label. `decision_log.jsonl` is already the substrate
+  for treating posture selection as a contextual bandit over them.
+- Recency decay on credibility, so an account can rehabilitate. Today NorthPeak's
+  0.27 is a life sentence.
 
 ---
 

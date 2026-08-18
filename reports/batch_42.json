@@ -1,0 +1,562 @@
+{
+  "adjudication": {
+    "changed_mind": false,
+    "conceded_but_not_acted": [],
+    "defence": "No critique stage ran; ranking stands unreviewed.",
+    "revisions": [],
+    "source": "fallback"
+  },
+  "advice": {
+    "charter_collision_warning": null,
+    "ranked_alternatives": [
+      {
+        "posture": "balanced",
+        "rank": 2,
+        "reasoning": "No axis dominates. This is the honest default when the situation does not clearly argue for a stance \u2014 and it is worth saying plainly that equal weights are not neutral, they are just a value judgment that declines to make itself interesting.",
+        "trade_off": "Does nothing especially wrong and nothing especially well. In an active incident it under-reacts; in a quiet week it over-reacts to whoever shouts loudest."
+      },
+      {
+        "posture": "fairness_first",
+        "rank": 3,
+        "reasoning": "A queue that never serves the back of the line is not a queue, it is a filter. We pay down waiting debt first and accept that some large accounts wait behind smaller ones who have already waited longer.",
+        "trade_off": "Fresh high-severity tickets queue behind stale low-severity ones. In an active incident this is close to indefensible; outside one it is close to obviously right."
+      },
+      {
+        "posture": "platform_health",
+        "rank": 4,
+        "reasoning": "Tickets are symptoms; the platform is the patient. We rank by what a problem says about systemic health rather than by who reported it, and we treat correlated reports as one event rather than several complaints.",
+        "trade_off": "Genuinely isolated single-merchant problems \u2014 which are most problems \u2014 get less attention than their owners think they deserve. Commercially blunt."
+      },
+      {
+        "posture": "revenue_first",
+        "rank": 5,
+        "reasoning": "Enterprise churn is existential this quarter. We accept slower service to the free tier as the price of protecting the base. If we lose a top-five account before the raise, the fairness we bought is fairness inside a smaller company.",
+        "trade_off": "Free and starter merchants wait. Slow-burning correctness problems on small accounts are systematically deferred, and the fairness ledger grows faster than it drains."
+      },
+      {
+        "posture": "speed_optimised",
+        "rank": 6,
+        "reasoning": "With three agents against a backlog of forty-seven, throughput is the constraint. Clearing four cheap tickets buys more total relief than clearing one expensive one, and a shrinking queue is itself a fairness mechanism.",
+        "trade_off": "Systematically starves slow-but-serious work. Anything that takes a day to fix never reaches the top of the list, which is exactly backwards for the issues that matter most. This posture optimises the metric it is measured by."
+      }
+    ],
+    "reasoning": "System load is 91% with an active incident (Checkout latency degraded, EU region (eu-west-1), flash-sale traffic peak). Blast radius outranks the invoice attached to it.",
+    "recommended": "crisis_mode",
+    "source": "fallback",
+    "what_it_costs": "Large accounts with genuine but low-blast-radius problems get parked. Relationship damage is deferred rather than avoided, and it comes due at renewal."
+  },
+  "as_of": "2026-08-19T14:00:00Z",
+  "batch_id": 42,
+  "clusters": [
+    {
+      "cluster_id": "sig::PAYMT-503-EU",
+      "confidence": 1.0,
+      "root_cause": "shared error signature PAYMT-503-EU in eu-west-1",
+      "shared_evidence": [
+        "TKT-4477: signature=PAYMT-503-EU, region=eu-west-1, first_error_at=2026-08-19T12:18:00+00:00",
+        "TKT-4479: signature=PAYMT-503-EU, region=eu-west-1, first_error_at=2026-08-19T12:21:00+00:00"
+      ],
+      "ticket_ids": [
+        "TKT-4477",
+        "TKT-4479"
+      ]
+    }
+  ],
+  "company_state_summary": "system load 91%; 3 agents against a backlog of 47; strategic priority enterprise_retention; churn pressure high; 8 months runway; series_b in 6 weeks; active incident: Checkout latency degraded, EU region (eu-west-1), flash-sale traffic peak; at renewal: northpeak; 2 SLA breaches this month",
+  "conflicts": [
+    {
+      "claim_a": "merchant states urgency 'low'",
+      "claim_b": "blast radius 0.77 across 340 users",
+      "reasoning": "The merchant is understating this. Evidence outranks the claim in both directions -- a low stated urgency is discounted no differently from a high one.",
+      "severity_of_conflict": "high",
+      "source_a": "ticket",
+      "source_b": "telemetry",
+      "ticket_id": "TKT-4482",
+      "trusted": "telemetry"
+    },
+    {
+      "claim_a": "free tier, $0 ARR",
+      "claim_b": "confirmed security exposure or data loss",
+      "reasoning": "Account value has no bearing on a charter-protected condition.",
+      "severity_of_conflict": "high",
+      "source_a": "crm",
+      "source_b": "telemetry",
+      "ticket_id": "TKT-4482",
+      "trusted": "telemetry"
+    },
+    {
+      "claim_a": "merchant states urgency 'critical'",
+      "claim_b": "0 users affected, 0% error rate",
+      "reasoning": "Stated urgency is unsupported by any independent measurement. Account credibility is 0.22 (1 of 7 urgency claims confirmed severe).",
+      "severity_of_conflict": "medium",
+      "source_a": "ticket",
+      "source_b": "telemetry",
+      "ticket_id": "TKT-4480",
+      "trusted": "telemetry"
+    }
+  ],
+  "critiques": [],
+  "degraded_stages": [
+    "no API key and no cassettes; used the keyword heuristic",
+    "no API key and no cassettes; clustered on error signature only",
+    "no API key and no cassettes; used rule-based conflict detection",
+    "no API key and no cassettes; used the company-state decision tree",
+    "no API key and no cassettes; ranking is unreviewed",
+    "no critiques to adjudicate; ranking is unreviewed",
+    "no API key and no cassettes; report is tables only"
+  ],
+  "escalations": [
+    {
+      "ticket_id": "TKT-4482",
+      "what_would_resolve_it": "Security and legal review, in parallel with the fix.",
+      "why": "Confirmed exposure. Ranking is a triage decision; disclosure obligations are not, and this system has no view on those."
+    }
+  ],
+  "label": "Wednesday 14:00 UTC - flash sale peak, EU checkout latency incident open",
+  "narrative": "",
+  "ordering": {
+    "capacity": 3,
+    "overrides": [],
+    "oversubscribed": [],
+    "posture": "crisis_mode",
+    "ranked": [
+      {
+        "charter_promoted": false,
+        "customer_id": "bloomvine",
+        "justification": "severity 0.84 from measured reach (610 users affected, 52% error rate); scored as part of a 2-ticket cluster; criticality dominates under crisis_mode (0.99)",
+        "rank": 1,
+        "score": 0.7542538066123748,
+        "scored": {
+          "cluster_id": "sig::PAYMT-503-EU",
+          "cluster_severity": 0.9901917582116336,
+          "cluster_size": 2,
+          "components": {
+            "criticality": 0.9901917582116336,
+            "fairness": 0.01111111111111111,
+            "revenue": 0.7707999999999999,
+            "speed": 0.6157444861953973
+          },
+          "customer_id": "bloomvine",
+          "estimate": {
+            "arr": 36000.0,
+            "blast_radius": 0.8439359840203614,
+            "blocks_paying_workflow_claimed": true,
+            "blocks_paying_workflow_observed": true,
+            "category": "checkout_failure",
+            "category_median_hours": 4.8,
+            "category_n": 28,
+            "category_severe_rate": 0.82,
+            "claimed_urgency_value": 0.75,
+            "compliance_deadline_hours": null,
+            "credibility": 0.5714285714285714,
+            "credibility_evidence": "3 of 5 urgency claims confirmed severe",
+            "customer_id": "bloomvine",
+            "data_loss": false,
+            "error_rate": 0.52,
+            "expected_resolution_hours": 4.8,
+            "gmv_at_risk_per_hour": 11200.0,
+            "security_exposure": false,
+            "sla_deadline_hours": null,
+            "stated_urgency": "high",
+            "ticket_id": "TKT-4479",
+            "tier": "growth",
+            "times_skipped": 0,
+            "urgency_intensity": 0.0,
+            "users_affected": 610,
+            "waiting_hours": 1.3333333333333333
+          },
+          "score": 0.7542538066123748,
+          "severity": {
+            "charter_floor": 0.0,
+            "charter_floor_reason": null,
+            "claimed": 0.42857142857142855,
+            "driver": "observed",
+            "observed": 0.8439359840203614,
+            "severity": 0.8439359840203614
+          },
+          "ticket_id": "TKT-4479"
+        },
+        "served": true,
+        "ticket_id": "TKT-4479"
+      },
+      {
+        "charter_promoted": false,
+        "customer_id": "northpeak",
+        "justification": "severity 0.94 from measured reach (1240 users affected, 68% error rate); scored as part of a 2-ticket cluster; criticality dominates under crisis_mode (0.99)",
+        "rank": 2,
+        "score": 0.7533171399457081,
+        "scored": {
+          "cluster_id": "sig::PAYMT-503-EU",
+          "cluster_severity": 0.9901917582116336,
+          "cluster_size": 2,
+          "components": {
+            "criticality": 0.9901917582116336,
+            "fairness": 0.006666666666666667,
+            "revenue": 0.7689999999999999,
+            "speed": 0.6157444861953973
+          },
+          "customer_id": "northpeak",
+          "estimate": {
+            "arr": 480000.0,
+            "blast_radius": 0.937152445252684,
+            "blocks_paying_workflow_claimed": true,
+            "blocks_paying_workflow_observed": true,
+            "category": "checkout_failure",
+            "category_median_hours": 4.8,
+            "category_n": 28,
+            "category_severe_rate": 0.82,
+            "claimed_urgency_value": 1.0,
+            "compliance_deadline_hours": null,
+            "credibility": 0.2727272727272727,
+            "credibility_evidence": "2 of 9 urgency claims confirmed severe",
+            "customer_id": "northpeak",
+            "data_loss": false,
+            "error_rate": 0.68,
+            "expected_resolution_hours": 4.8,
+            "gmv_at_risk_per_hour": 8400.0,
+            "security_exposure": false,
+            "sla_deadline_hours": null,
+            "stated_urgency": "critical",
+            "ticket_id": "TKT-4477",
+            "tier": "enterprise",
+            "times_skipped": 0,
+            "urgency_intensity": 0.76,
+            "users_affected": 1240,
+            "waiting_hours": 0.8
+          },
+          "score": 0.7533171399457081,
+          "severity": {
+            "charter_floor": 0.0,
+            "charter_floor_reason": null,
+            "claimed": 0.3,
+            "driver": "observed",
+            "observed": 0.937152445252684,
+            "severity": 0.937152445252684
+          },
+          "ticket_id": "TKT-4477"
+        },
+        "served": true,
+        "ticket_id": "TKT-4477"
+      },
+      {
+        "charter_promoted": false,
+        "customer_id": "soloartisan",
+        "justification": "severity 1.00 from a charter floor of 1.00 (confirmed exposure of data across a trust boundary); criticality dominates under crisis_mode (1.00)",
+        "rank": 3,
+        "score": 0.6385349599458386,
+        "scored": {
+          "cluster_id": "solo::TKT-4482",
+          "cluster_severity": null,
+          "cluster_size": 1,
+          "components": {
+            "criticality": 1.0,
+            "fairness": 0.0375,
+            "revenue": 0.010000000000000002,
+            "speed": 0.5427330663055906
+          },
+          "customer_id": "soloartisan",
+          "estimate": {
+            "arr": 0.0,
+            "blast_radius": 0.767211393449138,
+            "blocks_paying_workflow_claimed": false,
+            "blocks_paying_workflow_observed": false,
+            "category": "data_integrity",
+            "category_median_hours": 7.1,
+            "category_n": 17,
+            "category_severe_rate": 0.71,
+            "claimed_urgency_value": 0.25,
+            "compliance_deadline_hours": null,
+            "credibility": 0.75,
+            "credibility_evidence": "2 of 2 urgency claims confirmed severe",
+            "customer_id": "soloartisan",
+            "data_loss": false,
+            "error_rate": 0.0,
+            "expected_resolution_hours": 7.1,
+            "gmv_at_risk_per_hour": 0.0,
+            "security_exposure": true,
+            "sla_deadline_hours": null,
+            "stated_urgency": "low",
+            "ticket_id": "TKT-4482",
+            "tier": "free",
+            "times_skipped": 0,
+            "urgency_intensity": 0.0,
+            "users_affected": 340,
+            "waiting_hours": 4.5
+          },
+          "score": 0.6385349599458386,
+          "severity": {
+            "charter_floor": 1.0,
+            "charter_floor_reason": "confirmed exposure of data across a trust boundary",
+            "claimed": 0.1875,
+            "driver": "observed",
+            "observed": 1.0,
+            "severity": 1.0
+          },
+          "ticket_id": "TKT-4482"
+        },
+        "served": true,
+        "ticket_id": "TKT-4482"
+      },
+      {
+        "charter_promoted": false,
+        "customer_id": "verdant",
+        "justification": "severity 0.42 from measured reach (24 users affected, 11% error rate); criticality dominates under crisis_mode (0.42); skipped 6x, waiting 112h",
+        "rank": 4,
+        "score": 0.4322991214401814,
+        "scored": {
+          "cluster_id": "solo::TKT-4471",
+          "cluster_severity": null,
+          "cluster_size": 1,
+          "components": {
+            "criticality": 0.4234581572170488,
+            "fairness": 0.9333333333333333,
+            "revenue": 0.0756,
+            "speed": 0.32038089980536355
+          },
+          "customer_id": "verdant",
+          "estimate": {
+            "arr": 52000.0,
+            "blast_radius": 0.4234581572170488,
+            "blocks_paying_workflow_claimed": false,
+            "blocks_paying_workflow_observed": false,
+            "category": "integration_api",
+            "category_median_hours": 21.4,
+            "category_n": 31,
+            "category_severe_rate": 0.39,
+            "claimed_urgency_value": 0.5,
+            "compliance_deadline_hours": null,
+            "credibility": 0.6666666666666666,
+            "credibility_evidence": "3 of 4 urgency claims confirmed severe",
+            "customer_id": "verdant",
+            "data_loss": false,
+            "error_rate": 0.11,
+            "expected_resolution_hours": 21.4,
+            "gmv_at_risk_per_hour": 0.0,
+            "security_exposure": false,
+            "sla_deadline_hours": null,
+            "stated_urgency": "medium",
+            "ticket_id": "TKT-4471",
+            "tier": "growth",
+            "times_skipped": 6,
+            "urgency_intensity": 0.0,
+            "users_affected": 24,
+            "waiting_hours": 112.0
+          },
+          "score": 0.4322991214401814,
+          "severity": {
+            "charter_floor": 0.0,
+            "charter_floor_reason": null,
+            "claimed": 0.3333333333333333,
+            "driver": "observed",
+            "observed": 0.4234581572170488,
+            "severity": 0.4234581572170488
+          },
+          "ticket_id": "TKT-4471"
+        },
+        "served": false,
+        "ticket_id": "TKT-4471"
+      },
+      {
+        "charter_promoted": false,
+        "customer_id": "tidewater",
+        "justification": "severity 0.39 from category history alone -- 'integration_api' issues are genuinely severe 39% of the time (n=31) -- while this ticket's own telemetry shows only 18 users affected; criticality dominates under crisis_mode (0.39)",
+        "rank": 5,
+        "score": 0.2989029683041379,
+        "scored": {
+          "cluster_id": "solo::TKT-4478",
+          "cluster_severity": null,
+          "cluster_size": 1,
+          "components": {
+            "criticality": 0.39,
+            "fairness": 0.04930555555555556,
+            "revenue": 0.193,
+            "speed": 0.32038089980536355
+          },
+          "customer_id": "tidewater",
+          "estimate": {
+            "arr": 310000.0,
+            "blast_radius": 0.38735470766627733,
+            "blocks_paying_workflow_claimed": false,
+            "blocks_paying_workflow_observed": false,
+            "category": "integration_api",
+            "category_median_hours": 21.4,
+            "category_n": 31,
+            "category_severe_rate": 0.39,
+            "claimed_urgency_value": 0.5,
+            "compliance_deadline_hours": null,
+            "credibility": 0.6666666666666666,
+            "credibility_evidence": "3 of 4 urgency claims confirmed severe",
+            "customer_id": "tidewater",
+            "data_loss": false,
+            "error_rate": 0.02,
+            "expected_resolution_hours": 21.4,
+            "gmv_at_risk_per_hour": 0.0,
+            "security_exposure": false,
+            "sla_deadline_hours": null,
+            "stated_urgency": "medium",
+            "ticket_id": "TKT-4478",
+            "tier": "enterprise",
+            "times_skipped": 0,
+            "urgency_intensity": 0.12,
+            "users_affected": 18,
+            "waiting_hours": 5.916666666666667
+          },
+          "score": 0.2989029683041379,
+          "severity": {
+            "charter_floor": 0.0,
+            "charter_floor_reason": null,
+            "claimed": 0.3333333333333333,
+            "driver": "observed",
+            "observed": 0.39,
+            "severity": 0.39
+          },
+          "ticket_id": "TKT-4478"
+        },
+        "served": false,
+        "ticket_id": "TKT-4478"
+      },
+      {
+        "charter_promoted": false,
+        "customer_id": "kitecopper",
+        "justification": "severity 0.30 rests on the claim alone, discounted to 0.22 credibility (1 of 7 urgency claims confirmed severe); criticality dominates under crisis_mode (0.30)",
+        "rank": 6,
+        "score": 0.17232016666666666,
+        "scored": {
+          "cluster_id": "solo::TKT-4480",
+          "cluster_severity": null,
+          "cluster_size": 1,
+          "components": {
+            "criticality": 0.3,
+            "fairness": 0.017361111111111112,
+            "revenue": 0.031439999999999996,
+            "speed": 0.0
+          },
+          "customer_id": "kitecopper",
+          "estimate": {
+            "arr": 4800.0,
+            "blast_radius": 0.0,
+            "blocks_paying_workflow_claimed": false,
+            "blocks_paying_workflow_observed": false,
+            "category": "ui_cosmetic",
+            "category_median_hours": 96.6,
+            "category_n": 51,
+            "category_severe_rate": 0.04,
+            "claimed_urgency_value": 1.0,
+            "compliance_deadline_hours": null,
+            "credibility": 0.2222222222222222,
+            "credibility_evidence": "1 of 7 urgency claims confirmed severe",
+            "customer_id": "kitecopper",
+            "data_loss": false,
+            "error_rate": 0.0,
+            "expected_resolution_hours": 96.6,
+            "gmv_at_risk_per_hour": 0.0,
+            "security_exposure": false,
+            "sla_deadline_hours": null,
+            "stated_urgency": "critical",
+            "ticket_id": "TKT-4480",
+            "tier": "starter",
+            "times_skipped": 0,
+            "urgency_intensity": 0.81,
+            "users_affected": 0,
+            "waiting_hours": 2.0833333333333335
+          },
+          "score": 0.17232016666666666,
+          "severity": {
+            "charter_floor": 0.0,
+            "charter_floor_reason": null,
+            "claimed": 0.3,
+            "driver": "claimed",
+            "observed": 0.04,
+            "severity": 0.3
+          },
+          "ticket_id": "TKT-4480"
+        },
+        "served": false,
+        "ticket_id": "TKT-4480"
+      }
+    ]
+  },
+  "ordering_before_adjudication": [
+    "TKT-4479",
+    "TKT-4477",
+    "TKT-4482",
+    "TKT-4471",
+    "TKT-4478",
+    "TKT-4480"
+  ],
+  "posture": "crisis_mode",
+  "posture_chosen_by": "agent recommendation, auto-confirmed (fallback)",
+  "regret": [
+    {
+      "cost_sentence": "northpeak moves 1 position earlier; both sides of the capacity line unchanged",
+      "posture": "balanced",
+      "rank_here": 1,
+      "rank_under_chosen": 2,
+      "ticket_id": "TKT-4477"
+    },
+    {
+      "cost_sentence": "bloomvine moves 1 position later; both sides of the capacity line unchanged",
+      "posture": "balanced",
+      "rank_here": 2,
+      "rank_under_chosen": 1,
+      "ticket_id": "TKT-4479"
+    },
+    {
+      "cost_sentence": "verdant is served this batch instead of waiting; costs a served slot to whoever is displaced",
+      "posture": "fairness_first",
+      "rank_here": 1,
+      "rank_under_chosen": 4,
+      "ticket_id": "TKT-4471"
+    },
+    {
+      "cost_sentence": "bloomvine is deferred instead of served - $11,200/h keeps bleeding",
+      "posture": "fairness_first",
+      "rank_here": 4,
+      "rank_under_chosen": 1,
+      "ticket_id": "TKT-4479"
+    },
+    {
+      "cost_sentence": "northpeak moves 1 position earlier; both sides of the capacity line unchanged",
+      "posture": "platform_health",
+      "rank_here": 1,
+      "rank_under_chosen": 2,
+      "ticket_id": "TKT-4477"
+    },
+    {
+      "cost_sentence": "bloomvine moves 1 position later; both sides of the capacity line unchanged",
+      "posture": "platform_health",
+      "rank_here": 2,
+      "rank_under_chosen": 1,
+      "ticket_id": "TKT-4479"
+    },
+    {
+      "cost_sentence": "verdant moves 1 position later; both sides of the capacity line unchanged",
+      "posture": "revenue_first",
+      "rank_here": 5,
+      "rank_under_chosen": 4,
+      "ticket_id": "TKT-4471"
+    },
+    {
+      "cost_sentence": "northpeak moves 1 position earlier; both sides of the capacity line unchanged",
+      "posture": "revenue_first",
+      "rank_here": 1,
+      "rank_under_chosen": 2,
+      "ticket_id": "TKT-4477"
+    },
+    {
+      "cost_sentence": "northpeak moves 1 position earlier; both sides of the capacity line unchanged",
+      "posture": "speed_optimised",
+      "rank_here": 1,
+      "rank_under_chosen": 2,
+      "ticket_id": "TKT-4477"
+    },
+    {
+      "cost_sentence": "bloomvine moves 1 position later; both sides of the capacity line unchanged",
+      "posture": "speed_optimised",
+      "rank_here": 2,
+      "rank_under_chosen": 1,
+      "ticket_id": "TKT-4479"
+    }
+  ],
+  "sanitisation_events": []
+}

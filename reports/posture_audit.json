@@ -1,0 +1,41 @@
+{
+  "batches": 3,
+  "charter_ceiling_hours": 120.0,
+  "decisions": 17,
+  "posture": null,
+  "tiers": {
+    "enterprise": {
+      "deferred": 2,
+      "median_wait_hours": 6.4,
+      "served": 4,
+      "service_rate": 0.67,
+      "worst_wait_hours": 14.3
+    },
+    "free": {
+      "deferred": 1,
+      "median_wait_hours": 5.9,
+      "served": 1,
+      "service_rate": 0.5,
+      "worst_wait_hours": 7.2
+    },
+    "growth": {
+      "deferred": 3,
+      "median_wait_hours": 41.8,
+      "served": 3,
+      "service_rate": 0.5,
+      "worst_wait_hours": 128.0
+    },
+    "starter": {
+      "deferred": 3,
+      "median_wait_hours": 5.9,
+      "served": 0,
+      "service_rate": 0.0,
+      "worst_wait_hours": 13.1
+    }
+  },
+  "warnings": [
+    "BREACHED. Worst observed wait is 5.3 days against a charter ceiling of 5 days. The charter promotes on the batch AFTER a ticket crosses the line, because promotion happens at batch boundaries and the ticket crossed between them. The rule caught it; it did not prevent it. Preventing it means promoting on projected wait at the NEXT boundary, or processing arrivals as a stream.",
+    "growth tier waits 7x longer than free tier at the median. That may be exactly what the posture intends -- it is stated here so it is a decision rather than a side effect.",
+    "starter tier has not been served once in this window."
+  ]
+}

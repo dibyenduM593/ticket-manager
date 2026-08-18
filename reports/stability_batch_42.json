@@ -1,0 +1,321 @@
+{
+  "batch": "C:\\Users\\Dibyendu\\DAGOAT\\LEC\\ticket-manager\\data\\batches\\batch_1.json",
+  "batch_id": 42,
+  "changed_mind_spread": {
+    "False": 10
+  },
+  "conflict_count_spread": {
+    "3": 10
+  },
+  "degraded": true,
+  "distinct_orderings": 1,
+  "identical_runs": 10,
+  "modal_ordering": [
+    "TKT-4479",
+    "TKT-4477",
+    "TKT-4482",
+    "TKT-4471",
+    "TKT-4478",
+    "TKT-4480"
+  ],
+  "mode": "deterministic core only",
+  "posture_spread": {
+    "crisis_mode": 10
+  },
+  "runs": 10,
+  "samples": [
+    {
+      "changed_mind": false,
+      "clusters": 1,
+      "conflicts": 3,
+      "degraded": [
+        "no API key and no cassettes; used the keyword heuristic",
+        "no API key and no cassettes; clustered on error signature only",
+        "no API key and no cassettes; used rule-based conflict detection",
+        "no API key and no cassettes; used the company-state decision tree",
+        "no API key and no cassettes; ranking is unreviewed",
+        "no critiques to adjudicate; ranking is unreviewed",
+        "no API key and no cassettes; report is tables only"
+      ],
+      "ordering": [
+        "TKT-4479",
+        "TKT-4477",
+        "TKT-4482",
+        "TKT-4471",
+        "TKT-4478",
+        "TKT-4480"
+      ],
+      "overrides": [],
+      "posture": "crisis_mode",
+      "served": [
+        "TKT-4479",
+        "TKT-4477",
+        "TKT-4482"
+      ]
+    },
+    {
+      "changed_mind": false,
+      "clusters": 1,
+      "conflicts": 3,
+      "degraded": [
+        "no API key and no cassettes; used the keyword heuristic",
+        "no API key and no cassettes; clustered on error signature only",
+        "no API key and no cassettes; used rule-based conflict detection",
+        "no API key and no cassettes; used the company-state decision tree",
+        "no API key and no cassettes; ranking is unreviewed",
+        "no critiques to adjudicate; ranking is unreviewed",
+        "no API key and no cassettes; report is tables only"
+      ],
+      "ordering": [
+        "TKT-4479",
+        "TKT-4477",
+        "TKT-4482",
+        "TKT-4471",
+        "TKT-4478",
+        "TKT-4480"
+      ],
+      "overrides": [],
+      "posture": "crisis_mode",
+      "served": [
+        "TKT-4479",
+        "TKT-4477",
+        "TKT-4482"
+      ]
+    },
+    {
+      "changed_mind": false,
+      "clusters": 1,
+      "conflicts": 3,
+      "degraded": [
+        "no API key and no cassettes; used the keyword heuristic",
+        "no API key and no cassettes; clustered on error signature only",
+        "no API key and no cassettes; used rule-based conflict detection",
+        "no API key and no cassettes; used the company-state decision tree",
+        "no API key and no cassettes; ranking is unreviewed",
+        "no critiques to adjudicate; ranking is unreviewed",
+        "no API key and no cassettes; report is tables only"
+      ],
+      "ordering": [
+        "TKT-4479",
+        "TKT-4477",
+        "TKT-4482",
+        "TKT-4471",
+        "TKT-4478",
+        "TKT-4480"
+      ],
+      "overrides": [],
+      "posture": "crisis_mode",
+      "served": [
+        "TKT-4479",
+        "TKT-4477",
+        "TKT-4482"
+      ]
+    },
+    {
+      "changed_mind": false,
+      "clusters": 1,
+      "conflicts": 3,
+      "degraded": [
+        "no API key and no cassettes; used the keyword heuristic",
+        "no API key and no cassettes; clustered on error signature only",
+        "no API key and no cassettes; used rule-based conflict detection",
+        "no API key and no cassettes; used the company-state decision tree",
+        "no API key and no cassettes; ranking is unreviewed",
+        "no critiques to adjudicate; ranking is unreviewed",
+        "no API key and no cassettes; report is tables only"
+      ],
+      "ordering": [
+        "TKT-4479",
+        "TKT-4477",
+        "TKT-4482",
+        "TKT-4471",
+        "TKT-4478",
+        "TKT-4480"
+      ],
+      "overrides": [],
+      "posture": "crisis_mode",
+      "served": [
+        "TKT-4479",
+        "TKT-4477",
+        "TKT-4482"
+      ]
+    },
+    {
+      "changed_mind": false,
+      "clusters": 1,
+      "conflicts": 3,
+      "degraded": [
+        "no API key and no cassettes; used the keyword heuristic",
+        "no API key and no cassettes; clustered on error signature only",
+        "no API key and no cassettes; used rule-based conflict detection",
+        "no API key and no cassettes; used the company-state decision tree",
+        "no API key and no cassettes; ranking is unreviewed",
+        "no critiques to adjudicate; ranking is unreviewed",
+        "no API key and no cassettes; report is tables only"
+      ],
+      "ordering": [
+        "TKT-4479",
+        "TKT-4477",
+        "TKT-4482",
+        "TKT-4471",
+        "TKT-4478",
+        "TKT-4480"
+      ],
+      "overrides": [],
+      "posture": "crisis_mode",
+      "served": [
+        "TKT-4479",
+        "TKT-4477",
+        "TKT-4482"
+      ]
+    },
+    {
+      "changed_mind": false,
+      "clusters": 1,
+      "conflicts": 3,
+      "degraded": [
+        "no API key and no cassettes; used the keyword heuristic",
+        "no API key and no cassettes; clustered on error signature only",
+        "no API key and no cassettes; used rule-based conflict detection",
+        "no API key and no cassettes; used the company-state decision tree",
+        "no API key and no cassettes; ranking is unreviewed",
+        "no critiques to adjudicate; ranking is unreviewed",
+        "no API key and no cassettes; report is tables only"
+      ],
+      "ordering": [
+        "TKT-4479",
+        "TKT-4477",
+        "TKT-4482",
+        "TKT-4471",
+        "TKT-4478",
+        "TKT-4480"
+      ],
+      "overrides": [],
+      "posture": "crisis_mode",
+      "served": [
+        "TKT-4479",
+        "TKT-4477",
+        "TKT-4482"
+      ]
+    },
+    {
+      "changed_mind": false,
+      "clusters": 1,
+      "conflicts": 3,
+      "degraded": [
+        "no API key and no cassettes; used the keyword heuristic",
+        "no API key and no cassettes; clustered on error signature only",
+        "no API key and no cassettes; used rule-based conflict detection",
+        "no API key and no cassettes; used the company-state decision tree",
+        "no API key and no cassettes; ranking is unreviewed",
+        "no critiques to adjudicate; ranking is unreviewed",
+        "no API key and no cassettes; report is tables only"
+      ],
+      "ordering": [
+        "TKT-4479",
+        "TKT-4477",
+        "TKT-4482",
+        "TKT-4471",
+        "TKT-4478",
+        "TKT-4480"
+      ],
+      "overrides": [],
+      "posture": "crisis_mode",
+      "served": [
+        "TKT-4479",
+        "TKT-4477",
+        "TKT-4482"
+      ]
+    },
+    {
+      "changed_mind": false,
+      "clusters": 1,
+      "conflicts": 3,
+      "degraded": [
+        "no API key and no cassettes; used the keyword heuristic",
+        "no API key and no cassettes; clustered on error signature only",
+        "no API key and no cassettes; used rule-based conflict detection",
+        "no API key and no cassettes; used the company-state decision tree",
+        "no API key and no cassettes; ranking is unreviewed",
+        "no critiques to adjudicate; ranking is unreviewed",
+        "no API key and no cassettes; report is tables only"
+      ],
+      "ordering": [
+        "TKT-4479",
+        "TKT-4477",
+        "TKT-4482",
+        "TKT-4471",
+        "TKT-4478",
+        "TKT-4480"
+      ],
+      "overrides": [],
+      "posture": "crisis_mode",
+      "served": [
+        "TKT-4479",
+        "TKT-4477",
+        "TKT-4482"
+      ]
+    },
+    {
+      "changed_mind": false,
+      "clusters": 1,
+      "conflicts": 3,
+      "degraded": [
+        "no API key and no cassettes; used the keyword heuristic",
+        "no API key and no cassettes; clustered on error signature only",
+        "no API key and no cassettes; used rule-based conflict detection",
+        "no API key and no cassettes; used the company-state decision tree",
+        "no API key and no cassettes; ranking is unreviewed",
+        "no critiques to adjudicate; ranking is unreviewed",
+        "no API key and no cassettes; report is tables only"
+      ],
+      "ordering": [
+        "TKT-4479",
+        "TKT-4477",
+        "TKT-4482",
+        "TKT-4471",
+        "TKT-4478",
+        "TKT-4480"
+      ],
+      "overrides": [],
+      "posture": "crisis_mode",
+      "served": [
+        "TKT-4479",
+        "TKT-4477",
+        "TKT-4482"
+      ]
+    },
+    {
+      "changed_mind": false,
+      "clusters": 1,
+      "conflicts": 3,
+      "degraded": [
+        "no API key and no cassettes; used the keyword heuristic",
+        "no API key and no cassettes; clustered on error signature only",
+        "no API key and no cassettes; used rule-based conflict detection",
+        "no API key and no cassettes; used the company-state decision tree",
+        "no API key and no cassettes; ranking is unreviewed",
+        "no critiques to adjudicate; ranking is unreviewed",
+        "no API key and no cassettes; report is tables only"
+      ],
+      "ordering": [
+        "TKT-4479",
+        "TKT-4477",
+        "TKT-4482",
+        "TKT-4471",
+        "TKT-4478",
+        "TKT-4480"
+      ],
+      "overrides": [],
+      "posture": "crisis_mode",
+      "served": [
+        "TKT-4479",
+        "TKT-4477",
+        "TKT-4482"
+      ]
+    }
+  ],
+  "served_set_stable": true,
+  "stable_prefix": 6,
+  "unstable_ranks": []
+}

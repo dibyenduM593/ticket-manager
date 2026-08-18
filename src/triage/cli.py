@@ -3,15 +3,19 @@
     triage plan                          posture advice only, no ranking
     triage run --batch data/batches/batch_1.json
     triage run --batch ... --posture fairness_first     human override
+    triage run --all                     every batch in sequence, debt carrying over
     triage compare --batch ...           all six postures side by side
     triage why TKT-4471                  interrogate a past decision
     triage audit                         what the posture actually did, across batches
+    triage eval                          conflict recall against the planted labels
+    triage stability --runs 10           what moves when the same batch is rerun
     triage run --replay                  zero setup, no API key
 """
 
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
 import typer
@@ -19,7 +23,9 @@ from rich.console import Console
 from rich.table import Table
 
 from . import audit as audit_mod
+from . import evaluate as evaluate_mod
 from . import paths, report as report_mod
+from . import stability as stability_mod
 from .config import load_postures
 from .models import PostureAdvice, Posture
 from .pipeline import (
@@ -30,12 +36,44 @@ from .pipeline import (
     run_batch,
 )
 
+
+def _utf8_console() -> Console:
+    """Force UTF-8 on the way out.
+
+    The reports use ⚠ for a degraded run and ⚖ for a charter override, and a Windows
+    console defaulting to cp1252 raises UnicodeEncodeError on the first one rather
+    than rendering a fallback. A triage tool that crashes while printing the word
+    "degraded" is not a good look, and the machine this gets demonstrated on is not
+    necessarily the machine it was written on.
+    """
+    stream = sys.stdout
+    reconfigure = getattr(stream, "reconfigure", None)
+    if reconfigure is not None:
+        try:
+            reconfigure(encoding="utf-8", errors="replace")
+        except (ValueError, OSError):
+            # A pipe or a captured stream that will not take an encoding. `replace`
+            # below still keeps us from raising.
+            pass
+    return Console(file=stream, legacy_windows=False)
+
+
 app = typer.Typer(add_completion=False, help=__doc__)
-console = Console()
+console = _utf8_console()
 
 
 def _default_batch() -> Path:
     return paths.batches_dir() / "batch_1.json"
+
+
+def _all_batches() -> list[Path]:
+    """Every batch, in the order they happen.
+
+    Sorted by the batch_id inside the file rather than by filename, because the
+    sequence is the point: batch 43 must see the fairness debt batch 42 left behind.
+    """
+    found = list(paths.batches_dir().glob("batch_*.json"))
+    return sorted(found, key=lambda p: json.loads(p.read_text(encoding="utf-8"))["batch_id"])
 
 
 # --------------------------------------------------------------------- plan
@@ -89,6 +127,7 @@ def _print_advice(advice: PostureAdvice, situation: str) -> None:
 @app.command()
 def run(
     batch: Path = typer.Option(None, help="batch json to triage"),
+    all_batches: bool = typer.Option(False, "--all", help="every batch in sequence, fairness debt carrying over"),
     posture: str = typer.Option(None, help="override the recommendation"),
     state: Path = typer.Option(None, help="company_state.yaml override"),
     replay: bool = typer.Option(False, "--replay", help="serve LLM calls from cassettes; no API key needed"),
@@ -97,23 +136,45 @@ def run(
     dry_run: bool = typer.Option(False, "--dry-run", help="do not write state/ or reports/"),
 ) -> None:
     """Full pipeline: contradictions, posture, ranking, charter, critique, report."""
-    ctx = Context.load(batch or _default_batch(), company_path=state)
+    if all_batches and batch:
+        console.print("[red]--all and --batch are mutually exclusive.[/red]")
+        raise typer.Exit(2)
 
-    options = RunOptions(
-        posture=posture,
-        use_llm=not no_llm,
-        replay=replay,
-        assume_yes=assume_yes,
-        persist_state=not dry_run,
-        confirm=None if assume_yes else _confirm_posture,
-    )
-    result = run_batch(ctx, options)
+    targets = _all_batches() if all_batches else [batch or _default_batch()]
+    if all_batches and not assume_yes:
+        # A three-batch sequence with a confirmation prompt in the middle of each is
+        # not a demo, it is an interrogation.
+        assume_yes = True
 
-    if not dry_run:
-        md_path, json_path = report_mod.write(result)
-        console.print(f"[dim]wrote {md_path} and {json_path}[/dim]\n")
+    for i, path in enumerate(targets):
+        if len(targets) > 1:
+            console.rule(f"[bold]{path.name}[/bold]")
 
-    _print_report(result)
+        # Reloaded per batch, so batch 43 reads the ledger batch 42 wrote. This is the
+        # whole point of running them in sequence: fairness debt is a property of a
+        # series, and cannot be observed in a single ordering.
+        ctx = Context.load(path, company_path=state)
+        options = RunOptions(
+            posture=posture,
+            use_llm=not no_llm,
+            replay=replay,
+            assume_yes=assume_yes,
+            persist_state=not dry_run,
+            confirm=None if assume_yes else _confirm_posture,
+        )
+        result = run_batch(ctx, options)
+
+        if not dry_run:
+            md_path, json_path = report_mod.write(result)
+            console.print(f"[dim]wrote {md_path} and {json_path}[/dim]\n")
+
+        _print_report(result)
+        if i < len(targets) - 1:
+            console.print()
+
+    if len(targets) > 1:
+        console.rule("[bold]posture audit across the sequence[/bold]")
+        console.print(audit_mod.render(audit_mod.audit(audit_mod.load_decisions())))
 
 
 def _confirm_posture(advice: PostureAdvice, postures: dict[str, Posture]) -> str:
@@ -273,6 +334,52 @@ def audit(
         console.print_json(json.dumps(result))
     else:
         console.print(audit_mod.render(result))
+
+
+# --------------------------------------------------------------------- eval
+
+
+@app.command("eval")
+def eval_conflicts(
+    replay: bool = typer.Option(False, "--replay", help="serve LLM calls from cassettes"),
+    no_llm: bool = typer.Option(False, "--no-llm", help="score the rule-based fallback detector"),
+    write_json: bool = typer.Option(True, "--write/--no-write", help="write reports/eval_conflicts.json"),
+) -> None:
+    """Conflict-detection recall against the planted labels.
+
+    The only place in this project the word "recall" is honest: we cannot know the
+    right ranking, but we do know which contradictions we authored.
+    """
+    result = evaluate_mod.evaluate(use_llm=not no_llm, replay=replay)
+    console.print(evaluate_mod.render(result))
+    if write_json:
+        console.print(f"\n[dim]wrote {evaluate_mod.write(result)}[/dim]")
+
+
+# ---------------------------------------------------------------- stability
+
+
+@app.command()
+def stability(
+    batch: Path = typer.Option(None, help="batch json to rerun"),
+    runs: int = typer.Option(10, help="how many times"),
+    posture: str = typer.Option(None, help="pin the posture, to isolate ordering variance"),
+    replay: bool = typer.Option(False, "--replay", help="serve LLM calls from cassettes"),
+    no_llm: bool = typer.Option(False, "--no-llm", help="measure the deterministic core alone"),
+    write_json: bool = typer.Option(True, "--write/--no-write", help="write reports/stability_batch_N.json"),
+) -> None:
+    """Run one batch N times at temperature 0 and report what moved.
+
+    Temperature 0 is not determinism; it narrows the distribution enough that the
+    residual variation can be measured. This measures it.
+    """
+    result = stability_mod.measure(
+        batch_path=batch, runs=runs, posture=posture,
+        use_llm=not no_llm, replay=replay,
+    )
+    console.print(stability_mod.render(result))
+    if write_json:
+        console.print(f"\n[dim]wrote {stability_mod.write(result)}[/dim]")
 
 
 if __name__ == "__main__":

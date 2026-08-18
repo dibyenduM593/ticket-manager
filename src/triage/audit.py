@@ -73,7 +73,19 @@ def audit(decisions: list[dict[str, Any]], posture: str | None = None) -> dict[s
     worst = max((r.worst_wait for r in by_tier.values()), default=0.0)
 
     warnings: list[str] = []
-    if ceiling and worst >= ceiling * 0.8:
+    if ceiling and worst >= ceiling:
+        # Already over. Saying "drifting toward a breach" here would be softer than
+        # the facts, and an audit that rounds its worst finding downward is worse
+        # than no audit.
+        warnings.append(
+            f"BREACHED. Worst observed wait is {worst / 24:.1f} days against a charter "
+            f"ceiling of {ceiling / 24:.0f} days. The charter promotes on the batch AFTER "
+            "a ticket crosses the line, because promotion happens at batch boundaries and "
+            "the ticket crossed between them. The rule caught it; it did not prevent it. "
+            "Preventing it means promoting on projected wait at the NEXT boundary, or "
+            "processing arrivals as a stream."
+        )
+    elif ceiling and worst >= ceiling * 0.8:
         warnings.append(
             f"Worst observed wait is {worst / 24:.1f} days against a charter ceiling of "
             f"{ceiling / 24:.0f} days. This policy is drifting toward a breach, not sitting "

@@ -98,7 +98,15 @@ CLAIMABLE = {
 }
 
 
-def main() -> None:
+def main(root: Path | None = None, quiet: bool = False) -> dict[str, object]:
+    """Generate the history and derive state/ from it.
+
+    `root` is injectable so a test can seed into a tmpdir and assert on the result.
+    state/ is a WORKING directory -- every `triage run` mutates it -- so a test that
+    asserted against the committed copy would pass on a clean checkout and fail the
+    moment anyone ran the demo. The claim being tested is about the seeder.
+    """
+    root = root or ROOT
     rng = random.Random(SEED)
     tickets: list[ResolvedTicket] = []
     counter = 3000
@@ -175,15 +183,17 @@ def main() -> None:
     categories = _derive_categories(tickets)
     ledger = _seed_ledger()
 
-    _write(ROOT / "data" / "history" / "resolved_tickets.json",
+    _write(root / "data" / "history" / "resolved_tickets.json",
            [t.model_dump(mode="json") for t in tickets])
-    _write(ROOT / "state" / "customers.json",
+    _write(root / "state" / "customers.json",
            {k: v.model_dump(mode="json") for k, v in customers.items()})
-    _write(ROOT / "state" / "categories.json",
+    _write(root / "state" / "categories.json",
            {k: v.model_dump(mode="json") for k, v in categories.items()})
-    _write(ROOT / "state" / "ledger.json", ledger)
+    _write(root / "state" / "ledger.json", ledger)
 
-    _report(tickets, customers, categories)
+    if not quiet:
+        _report(tickets, customers, categories)
+    return {"tickets": tickets, "customers": customers, "categories": categories}
 
 
 # ------------------------------------------------------------------ generation

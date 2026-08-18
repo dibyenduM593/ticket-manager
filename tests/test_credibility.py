@@ -116,12 +116,25 @@ def test_no_instrumented_reach_falls_back_to_category_history():
     assert bd.driver == "observed"
 
 
-def test_seeded_state_reproduces_the_designed_profiles():
+def test_seeded_state_reproduces_the_designed_profiles(tmp_path):
     """state/customers.json is derived by counting history, not written by hand.
-    If the seeder or the severity definition drifts, this fails."""
+    If the seeder or the severity definition drifts, this fails.
+
+    Seeded into a tmpdir rather than read off disk: state/ is a WORKING directory
+    that every `triage run` mutates, so asserting against the committed copy would
+    pass on a clean checkout and fail the moment anyone ran the demo. The claim under
+    test is about the seeder, and this is where the seeder is pinned.
+    """
+    import sys
+
+    from triage import paths
     from triage.state import State
 
-    state = State.load()
+    sys.path.insert(0, str(paths.repo_root() / "scripts"))
+    import seed_history
+
+    seed_history.main(tmp_path, quiet=True)
+    state = State.load(tmp_path / "state")
     expected = {
         "northpeak": 0.27,
         "kitecopper": 0.22,
