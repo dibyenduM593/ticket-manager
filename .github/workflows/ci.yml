@@ -1,0 +1,92 @@
+# The test suite is meant to run without an API key, and this is where that claim
+# gets tested rather than asserted. No secrets are configured for this workflow on
+# purpose: if anything in the deterministic path ever starts reaching for the
+# network, CI is where it fails, not the reviewer's machine.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.11 is the floor declared in pyproject; 3.13 is what it was written on.
+        python-version: ["3.11", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install
+        run: pip install -e ".[dev]"
+
+      - name: Tests
+        run: pytest -q
+
+  reproducible:
+    # The history is generated from a fixed seed and state/ is DERIVED from it by
+    # counting. Both are committed. If the seeder and the committed state ever drift
+    # apart, every credibility number in the README is describing a file nobody can
+    # regenerate -- so this job reseeds and fails on any diff.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install
+        run: pip install -e ".[dev]"
+
+      - name: Reseed from the fixed seed
+        run: python scripts/seed_history.py
+
+      - name: Committed state must match what the seeder produces
+        run: git diff --exit-code -- state/ data/history/
+
+      - name: A full run completes with no API key
+        run: |
+          python -m triage run --all --no-llm --dry-run
+          python -m triage compare --batch data/batches/batch_1.json
+
+      - name: Conflict eval and stability harness both run
+        run: |
+          python -m triage eval --no-llm --no-write
+          python -m triage stability --runs 3 --no-llm --no-write
+
+  secrets:
+    # First risk on the list: an API key reaching a public repo. Cheap to check,
+    # expensive to miss.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: No Anthropic key anywhere in history
+        run: |
+          if git log -p --all | grep -nE 'sk-ant-[A-Za-z0-9_-]{8}'; then
+            echo "::error::an API key appears in git history"
+            exit 1
+          fi
+          echo "clean"
+
+      - name: .env is not tracked
+        run: |
+          if git ls-files --error-unmatch .env 2>/dev/null; then
+            echo "::error::.env is tracked"
+            exit 1
+          fi
+          echo "clean"

@@ -1,5 +1,7 @@
 # Conflicting-signal ticket triage agent
 
+[![ci](https://github.com/dibyenduM593/ticket-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/dibyenduM593/ticket-manager/actions/workflows/ci.yml)
+
 A support-ticket triage system for a hosted e-commerce platform, built around one
 structural commitment:
 
@@ -218,6 +220,54 @@ with. It is what `revenue_first` is *for*, which is exactly why the audit states
 
 ---
 
+## Why the data is synthetic, and which real datasets were rejected
+
+The obvious criticism of this submission is that I made the data up. I did, deliberately,
+and the reasoning is the same reasoning the whole system rests on.
+
+**A labelled dataset ships a ground truth. The brief's premise is that no ground truth
+exists.** Every public ticket dataset with a `priority` column is one organisation's
+past judgment recorded as fact. Evaluating against it does not answer "how should these
+be ranked" -- it answers "how did *they* rank these", and then quietly relabels that as
+correctness. Importing the dataset imports the assumption the task asks you to reject.
+
+Four were reviewed properly before I wrote a line of the seeder:
+
+| Dataset | What it has | Why it was rejected |
+|---|---|---|
+| [Eclipse & Mozilla Defect Tracking](https://github.com/ansymo/msr2013-bug_dataset) (Lamkanfi et al., MSR 2013) | ~200k real bugs, reporter-assigned severity, the full triage lifecycle, real resolution times | The strongest candidate, and it fails on the thing that matters: **one source**. No telemetry, no account value, no reporter track record -- so nothing can contradict anything. Worse, its `severity` field is what the *reporter typed*, which is precisely the unreliable claim this system exists to discount. Treating it as ground truth assumes the thing the system is built to question. |
+| [Customer Support Ticket Dataset](https://www.kaggle.com/datasets/suraj520/customer-support-ticket-dataset) | 8.5k tickets with a `Ticket Priority` label (low / medium / high / critical) | The label *is* the answer, handed over. There is no independent signal to set against it, so a model scoring 90% here has learned one support team's habits, not triage. |
+| [Customer IT Support -- multilingual tickets](https://www.kaggle.com/datasets/tobiasbueck/multilingual-customer-support-tickets) | Labelled email tickets with priorities and queues | Same problem, and it is itself synthetic -- so it carries every drawback of generated data with none of the control, because its conflicts were not authored to demonstrate anything. |
+| [Customer Support on Twitter](https://www.kaggle.com/datasets/thoughtvector/customer-support-on-twitter) | 3M real support conversations | Genuinely real language, which is the appeal. But it is a conversation corpus, not a triage corpus: no priority, no severity, no account value, no telemetry. Nothing to contradict. |
+
+The failure is the same in all four: **one source per ticket.** This task is about what
+to do when independent sources disagree, and you cannot stage a disagreement with one
+witness.
+
+There is a second reason, narrower but decisive for the demo. The history's job is to
+*set up* the argument -- NorthPeak has to already have a bad track record before the
+live batch lands, so the audience watches the credibility discount get applied and knows
+where the number came from. Real data cannot do that, because real data does not know
+what you are about to demonstrate.
+
+**What the synthetic data is not allowed to do.** It is designed profiles, generated
+instances: [`scripts/seed_history.py`](scripts/seed_history.py) fixes six merchants'
+claim/confirmation rates and a per-category shape, then generates 260 individual
+resolved tickets consistent with them. `state/customers.json` is then **derived by
+counting those tickets**, never written by hand, so the credibility numbers are true of
+the history sitting next to them. `was_actually_severe()` is an operational definition
+you can disagree with, and moving it changes every number downstream. CI reseeds from
+the fixed seed and fails on any diff against the committed state, so "reproducible" is
+checked rather than claimed.
+
+**Where a real dataset would earn its place.** Eclipse/Mozilla resolution *times* are
+observed facts rather than judgments, so they could validate the **estimation** layer
+alone: does a category's predicted median duration correlate with actual fix time? That
+is a falsifiable claim about the world. The valuation layer stays out of it, permanently
+-- no dataset can tell you whether a $480k account outranks 2,000 free users.
+
+---
+
 ## Status
 
 Built:
@@ -235,6 +285,10 @@ Built:
   one-command regeneration of every committed artefact
 - 143 tests: deterministic core, LLM contract (including hallucinated-entity and
   hostile-response cases), behavioural guarantees, and the eval and audit themselves
+- CI on 3.11 and 3.13 with **no API key configured**, so any accidental reach for the
+  network fails there rather than on a reviewer's machine. It also reseeds from the
+  fixed seed and fails on any diff against the committed `state/` — "reproducible" is
+  checked, not claimed — and greps the full history for a leaked key on every push
 
 Not done:
 
@@ -287,10 +341,11 @@ Not done:
   a line the queue lands on.
 - Randomised ranking holdout on a small slice, to measure the causal effect of
   prioritisation — the only way any of this becomes falsifiable.
-- Augment a public dataset with held-out labels to validate the **estimation** layer
-  only (Spearman correlation of extracted severity against human priority), never the
-  valuation layer. Importing a dataset's priority labels would import a ground truth
-  the brief's premise says does not exist.
+- Validate the **estimation** layer against real resolution times from the
+  Eclipse/Mozilla defect dataset — does a category's predicted median duration
+  correlate with actual fix time? Estimation only; the valuation layer stays out of it
+  permanently, for the reasons in
+  [Why the data is synthetic](#why-the-data-is-synthetic-and-which-real-datasets-were-rejected).
 - Human overrides are the missing label. `decision_log.jsonl` is already the substrate
   for treating posture selection as a contextual bandit over them.
 - Recency decay on credibility, so an account can rehabilitate. Today NorthPeak's

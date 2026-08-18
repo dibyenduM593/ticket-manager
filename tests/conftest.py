@@ -1,4 +1,8 @@
-"""Shared fixtures. Nothing here touches the network."""
+"""Shared fixtures. Nothing here touches the network.
+
+All tests live under tests/, and only here -- pyproject.toml pins
+`testpaths = ["tests"]`, so a test file dropped anywhere else silently never runs.
+"""
 
 from __future__ import annotations
 
