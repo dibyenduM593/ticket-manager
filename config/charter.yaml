@@ -76,6 +76,3 @@ severity_floors:
   - when: { compliance_deadline_hours_lte: 48 }
     floor: 0.95
     reason: "a statutory clock is running"
-
-# Categories the charter treats as cosmetic for rule R1a.
-cosmetic_categories: [ui_cosmetic]

@@ -12,29 +12,18 @@ that CI cannot execute. Tests that exercise the LLM path must inject a fake clie
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
 
 from triage import paths
-from triage.config import load_posture
 from triage.models import (
     URGENCY_SCALE,
-    CategoryStats,
-    CrmRecord,
-    CustomerHistory,
-    LedgerEntry,
-    Telemetry,
-    Ticket,
     TicketEstimate,
     Tier,
     Urgency,
 )
 from triage.pipeline import Context
-from triage.state import State
-
-AS_OF = datetime(2026, 8, 19, 14, 0, tzinfo=timezone.utc)
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -68,22 +57,6 @@ def batch1_ctx() -> Context:
 def batch2_ctx() -> Context:
     ctx = Context.load(paths.eval_dir() / "batch_2.json")
     return Context(ctx.batch, ctx.company, ctx.sources, ctx.state.clone())
-
-
-@pytest.fixture
-def batch3_ctx() -> Context:
-    ctx = Context.load(paths.eval_dir() / "batch_3.json")
-    return Context(ctx.batch, ctx.company, ctx.sources, ctx.state.clone())
-
-
-@pytest.fixture
-def revenue_first():
-    return load_posture("revenue_first")
-
-
-@pytest.fixture
-def balanced():
-    return load_posture("balanced")
 
 
 def make_estimate(**overrides) -> TicketEstimate:
@@ -125,41 +98,3 @@ def make_estimate(**overrides) -> TicketEstimate:
     if "claimed_urgency_value" not in overrides:
         base["claimed_urgency_value"] = URGENCY_SCALE[base["stated_urgency"].value]
     return TicketEstimate(**base)
-
-
-def make_ticket(**overrides) -> Ticket:
-    base = dict(
-        id="TKT-0001",
-        customer_id="acme",
-        subject="s",
-        body="b",
-        category="integration_api",
-        stated_urgency=Urgency.medium,
-        blocks_paying_workflow=False,
-        submitted_at=AS_OF,
-    )
-    base.update(overrides)
-    return Ticket(**base)
-
-
-def make_state(**overrides) -> State:
-    customers = overrides.get("customers", {})
-    categories = overrides.get(
-        "categories",
-        {"integration_api": CategoryStats(median_hours=24.0, severe_rate=0.3, n=20)},
-    )
-    ledger = overrides.get("ledger", {})
-    return State(customers, categories, ledger)
-
-
-__all__ = [
-    "AS_OF",
-    "make_estimate",
-    "make_ticket",
-    "make_state",
-    "CategoryStats",
-    "CrmRecord",
-    "CustomerHistory",
-    "LedgerEntry",
-    "Telemetry",
-]

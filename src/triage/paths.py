@@ -46,10 +46,6 @@ def sources_dir() -> Path:
     return data_dir() / "sources"
 
 
-def history_dir() -> Path:
-    return data_dir() / "history"
-
-
 def state_dir() -> Path:
     return repo_root() / "state"
 

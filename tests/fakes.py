@@ -46,24 +46,6 @@ class FakeLLMClient:
         return schema.model_validate(payload)
 
 
-def extraction_for(ticket_ids: list[str], intensity: float = 0.5, injection: bool = False) -> dict:
-    return {
-        "extractions": [
-            {
-                "ticket_id": t,
-                "urgency_intensity": intensity,
-                "injection_attempt": injection,
-                "understating": False,
-            }
-            for t in ticket_ids
-        ]
-    }
-
-
-def no_clusters() -> dict:
-    return {"clusters": [], "reasoning": "no shared signatures"}
-
-
 def conflicts_for(pairs: list[tuple[str, str, str]]) -> dict:
     """pairs of (ticket_id, source_a, source_b)."""
     return {

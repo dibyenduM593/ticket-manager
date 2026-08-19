@@ -390,13 +390,6 @@ def _seed_pending() -> dict:
 # ------------------------------------------------------------------------ output
 
 
-def _counts(tickets: list[ResolvedTicket]) -> dict[str, int]:
-    out: dict[str, int] = {}
-    for t in tickets:
-        out[t.category] = out.get(t.category, 0) + 1
-    return out
-
-
 def _write(path: Path, payload) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as fh:

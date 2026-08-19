@@ -43,7 +43,6 @@ from .models import (
     PendingTicket,
     Posture,
     PostureAdvice,
-    PostureRanking,
     RankedTicket,
     RegretRow,
     Revision,
@@ -433,7 +432,7 @@ def _regret_sentence(r, here: int, there: int, capacity: int) -> str:
 # ------------------------------------------------------------------- escalations
 
 
-def escalations(estimates: list[TicketEstimate], ordering: Ordering) -> list[Escalation]:
+def escalations(estimates: list[TicketEstimate]) -> list[Escalation]:
     """Tickets the system declines to decide on.
 
     Refusing to rank something is a legitimate output. Every entry here names what
@@ -646,7 +645,7 @@ def run_batch_full(ctx: Context, options: RunOptions) -> tuple[BatchReport, dict
         critiques=critiques,
         adjudication=adjudication,
         regret=regret,
-        escalations=escalations(estimates, ordering) + _oversubscription_escalations(ordering),
+        escalations=escalations(estimates) + _oversubscription_escalations(ordering),
         sanitisation_events=ingest.sanitisation_events(ctx.batch),
         degraded_stages=degraded,
         narrative=narrative,

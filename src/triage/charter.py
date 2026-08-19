@@ -7,7 +7,7 @@ Two things this module does:
    deliberate and documented in config/charter.yaml. A confirmed security exposure
    is severe by declaration regardless of how small its measured blast radius is.
 
-2. `enforce(ordering)` -- rewrites an ordering so no rule is violated, using
+2. `enforce_full(ordering)` -- rewrites an ordering so no rule is violated, using
    MINIMUM INTERVENTION: a ticket is promoted to the lowest rank that satisfies the
    rule, never straight to the top. The charter is a floor, not a preference, and
    promoting to rank 1 would quietly turn it into one.
@@ -66,10 +66,6 @@ def credibility_clamp(charter: dict[str, Any] | None = None) -> tuple[float, flo
     return 0.3, 1.0
 
 
-def cosmetic_categories(charter: dict[str, Any] | None = None) -> set[str]:
-    return set((charter or load_charter()).get("cosmetic_categories", []))
-
-
 # ------------------------------------------------------------------ enforcement
 
 
@@ -105,16 +101,6 @@ class CharterResult:
         #: than agents. The charter does not get to invent capacity, so this is
         #: surfaced to a human rather than resolved by picking a favourite.
         self.oversubscribed = oversubscribed
-
-
-def enforce(
-    ranked: list[RankedTicket],
-    capacity: int,
-    charter: dict[str, Any] | None = None,
-) -> tuple[list[RankedTicket], list[CharterOverride]]:
-    """Apply the charter. Thin wrapper kept for callers that only want the ordering."""
-    result = enforce_full(ranked, capacity, charter)
-    return result.ranked, result.overrides
 
 
 def enforce_full(

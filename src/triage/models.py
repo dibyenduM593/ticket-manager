@@ -375,10 +375,6 @@ class Cluster(BaseModel):
     shared_evidence: list[str] = Field(default_factory=list)
     confidence: float = 1.0
 
-    @property
-    def is_singleton(self) -> bool:
-        return len(self.ticket_ids) == 1
-
 
 # ---------------------------------------------------------------------- scoring
 

@@ -23,7 +23,6 @@ from fakes import (
     critique_for,
 )
 
-from triage import paths
 from triage.config import load_posture, load_postures
 from triage.llm import stages as llm_stages
 from triage.llm.client import LLMClient, LLMUnavailable
