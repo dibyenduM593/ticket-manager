@@ -19,23 +19,42 @@ from pathlib import Path
 from typing import Any
 
 from . import paths
-from .models import CategoryStats, CustomerHistory, LedgerEntry, Observation, Urgency
+from .models import (
+    CategoryStats,
+    CustomerHistory,
+    LedgerEntry,
+    Observation,
+    PendingTicket,
+    RunMeta,
+    Urgency,
+)
 
 
 class State:
-    """The three state files, loaded together and saved together."""
+    """The five state files, loaded together and saved together."""
 
     def __init__(
         self,
         customers: dict[str, CustomerHistory],
         categories: dict[str, CategoryStats],
         ledger: dict[str, LedgerEntry],
+        pending: dict[str, PendingTicket] | None = None,
+        meta: RunMeta | None = None,
         root: Path | None = None,
+        is_clone: bool = False,
     ) -> None:
         self.customers = customers
         self.categories = categories
         self.ledger = ledger
+        #: Source A, carried over. The ledger knows a deferred ticket's id and its
+        #: debt but not a word of its text, so nothing could put it back into the next
+        #: batch. That is why carry-forward was faked by hand-duplicating TKT-4471
+        #: into two fixture files, and why the web form -- which has no fixtures --
+        #: could never show an old ticket at all.
+        self.pending = pending if pending is not None else {}
+        self.meta = meta or RunMeta()
         self.root = root or paths.state_dir()
+        self._is_clone = is_clone
 
     # ------------------------------------------------------------------ loading
 
@@ -54,22 +73,44 @@ class State:
             k: LedgerEntry.model_validate(v)
             for k, v in _read_json(d / "ledger.json", {}).items()
         }
-        return cls(customers, categories, ledger, root=d)
+        pending = {
+            k: PendingTicket.model_validate(v)
+            for k, v in _read_json(d / "pending.json", {}).items()
+        }
+        meta = RunMeta.model_validate(_read_json(d / "meta.json", {}))
+        return cls(customers, categories, ledger, pending, meta, root=d)
 
     def save(self, root: Path | str | None = None) -> None:
+        if self._is_clone and root is None:
+            raise RuntimeError(
+                "refusing to save a cloned State over real state/. A clone exists so "
+                "counterfactual scoring cannot leave six batches of ledger damage "
+                "behind; saving it would be exactly that damage. Pass an explicit root "
+                "if you really mean to write this copy somewhere."
+            )
         d = Path(root) if root else self.root
         d.mkdir(parents=True, exist_ok=True)
         _write_json(d / "customers.json", {k: v.model_dump(mode="json") for k, v in self.customers.items()})
         _write_json(d / "categories.json", {k: v.model_dump(mode="json") for k, v in self.categories.items()})
         _write_json(d / "ledger.json", {k: v.model_dump(mode="json") for k, v in self.ledger.items()})
+        _write_json(d / "pending.json", {k: v.model_dump(mode="json") for k, v in self.pending.items()})
+        _write_json(d / "meta.json", self.meta.model_dump(mode="json"))
 
     def clone(self) -> "State":
-        """Deep copy. Used by `compare`, which must never mutate real state."""
+        """Deep copy. Used by `compare`, which must never mutate real state.
+
+        The copy is marked, and `save()` refuses to write a marked copy to the default
+        root -- `root` used to be preserved here, leaving every clone one `.save()`
+        away from clobbering the real files.
+        """
         return State(
             {k: v.model_copy(deep=True) for k, v in self.customers.items()},
             {k: v.model_copy(deep=True) for k, v in self.categories.items()},
             {k: v.model_copy(deep=True) for k, v in self.ledger.items()},
+            {k: v.model_copy(deep=True) for k, v in self.pending.items()},
+            self.meta.model_copy(deep=True),
             root=self.root,
+            is_clone=True,
         )
 
     # ------------------------------------------------------------------ reading
@@ -107,21 +148,53 @@ class State:
             else:
                 entry.last_batch_seen = batch_id
 
-    def accrue_skips(self, deferred_ticket_ids: list[str]) -> None:
+    def accrue_skips(self, deferred_ticket_ids: list[str], batch_id: int) -> None:
         """Fairness debt accrues only for tickets that were actually skipped.
 
         A ranking is not a decision. Without a capacity line, `times_skipped` would
         increment off a number grounded in nothing -- see scorer.capacity_split.
+
+        Idempotent per batch, the same way `record_observation` is idempotent per
+        ticket. One batch can defer a ticket once; running that batch twice is the
+        same single decision observed twice, not two skips.
         """
         for tid in deferred_ticket_ids:
             entry = self.ledger.get(tid)
-            if entry is not None:
+            if entry is not None and entry.last_skip_batch != batch_id:
                 entry.times_skipped += 1
+                entry.last_skip_batch = batch_id
+
+    def defer_tickets(self, entries: list[PendingTicket]) -> None:
+        """Keep a deferred ticket whole so the next batch can carry it forward."""
+        for e in entries:
+            self.pending[e.ticket.id] = e
 
     def retire_served(self, served_ticket_ids: list[str]) -> None:
         """Served tickets leave the queue. They stay in customers.json as history."""
         for tid in served_ticket_ids:
             self.ledger.pop(tid, None)
+            self.pending.pop(tid, None)
+
+    def carry_forward(self, declared_ids: list[str]) -> list[PendingTicket]:
+        """Pending tickets not already declared by the incoming batch.
+
+        DECLARED WINS. `data/eval/` is a self-contained ground-truth corpus -- a
+        planted conflict is only findable if the file declares its ticket -- so the
+        fixtures re-declare TKT-4471 and must go on doing so. When both supply the
+        ticket the file's copy is the newer wording, and the ledger owns the waiting
+        clock either way, so swapping the body cannot move the fairness debt.
+
+        Oldest first, so the backlog reads as a queue rather than as dict order.
+        """
+        declared = set(declared_ids)
+        waiting = [e for tid, e in self.pending.items() if tid not in declared]
+        return sorted(waiting, key=lambda e: (e.ticket.submitted_at, e.ticket.id))
+
+    def advance(self, batch_id: int, as_of: datetime) -> None:
+        """Record how far the sequence has got, so the next ad-hoc batch can follow it."""
+        self.meta.last_batch_id = max(self.meta.last_batch_id, batch_id)
+        if self.meta.as_of is None or as_of > self.meta.as_of:
+            self.meta.as_of = as_of
 
     def record_observation(
         self,

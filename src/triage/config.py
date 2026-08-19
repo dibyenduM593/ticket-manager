@@ -1,8 +1,8 @@
 """Loaders for the declared side of the system: company state, postures, charter,
 valuation curves.
 
-Nothing in here reads `state/`. That separation is enforced by the module boundary
-and asserted by `tests/test_separation.py`.
+Nothing in here reads `state/`. That separation is held by the module boundary and
+by review; there is no longer a test asserting it.
 """
 
 from __future__ import annotations

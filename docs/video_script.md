@@ -6,21 +6,22 @@ most important.
 **Before recording**
 
 ```bash
-python scripts/run_demo.py --runs 10
+python scripts/run_demo.py --posture revenue_first --runs 10
 ```
 
 That reseeds state, regenerates every report, and leaves the terminal clean. Then
 open a fresh terminal so the scrollback starts empty.
 
-Everything here runs without an API key. If cassettes have been recorded, drop
-`--no-llm` and add `--replay` throughout — same commands, fuller output, no network
-risk on camera.
+Everything here runs without an API key: `--no-llm --posture crisis_mode` throughout,
+no network, and the report names every stage that did not run. With a key in `.env`,
+drop both flags and the same commands run the full pipeline — worth rehearsing before
+you risk it on camera.
 
 ---
 
 ## 0:00–0:20 · The problem, in one ticket
 
-Show `TKT-4482` in [`data/batches/batch_1.json`](../data/batches/batch_1.json).
+Show `TKT-4482` in [`data/eval/batch_1.json`](../data/eval/batch_1.json).
 
 > "Free tier. Zero revenue. The merchant says — and I quote — *probably just a display
 > glitch on my end, no rush at all*. Telemetry says confirmed cross-tenant exposure of
@@ -35,7 +36,7 @@ Show `TKT-4482` in [`data/batches/batch_1.json`](../data/batches/batch_1.json).
 ## 0:20–0:50 · Values are declared, not learned
 
 ```bash
-python -m triage plan --no-llm
+python -m triage plan          # needs a key; skip this beat if recording keyless
 ```
 
 > "The business declares its situation in a YAML file: 91% system load, active
@@ -45,7 +46,7 @@ python -m triage plan --no-llm
 >
 > Then it stops and asks a human. That's deliberate. Estimation is factual and learned
 > from history. Valuation is declared and never learned. They live in separate modules
-> that cannot write to each other, and a test enforces it. If history could rewrite
+> that cannot write to each other. If history could rewrite
 > values, the system would be laundering a judgment call as data — which is the exact
 > failure mode this task is probing for."
 
@@ -54,7 +55,7 @@ python -m triage plan --no-llm
 ## 0:50–1:40 · The run, and the override
 
 ```bash
-python -m triage run --batch data/batches/batch_1.json --posture revenue_first --no-llm -y
+python -m triage run --batch data/eval/batch_1.json --posture revenue_first --no-llm -y
 ```
 
 Let the ranking table land. Then point at the ⚖ on rank 3.
@@ -78,7 +79,7 @@ Scroll to the charter-override block in the output.
 ## 1:40–2:15 · The same batch, six different ethics
 
 ```bash
-python -m triage compare --batch data/batches/batch_1.json
+python -m triage compare --batch data/eval/batch_1.json
 ```
 
 > "Same evidence, same four sources, six value postures. Four distinct orderings.
@@ -96,7 +97,7 @@ python -m triage compare --batch data/batches/batch_1.json
 ## 2:15–2:40 · Fairness is a property of a series
 
 ```bash
-python -m triage run --all --no-llm
+python -m triage run --all --no-llm --posture revenue_first
 ```
 
 Let it run all three batches, then stop on the audit.
@@ -116,8 +117,9 @@ Let it run all three batches, then stop on the audit.
 
 ## 2:40–3:00 · What's unfinished
 
-> "Honestly: the cassettes aren't recorded, so every number in that README is from the
-> deterministic fallback path — including conflict recall, which is 9 of 21 planted
+> "Honestly: there's no key attached to this repo and no recorded responses, so every
+> number in that README is from the deterministic path — including conflict recall,
+> which is 9 of 21 planted
 > contradictions. The fallback finds the arithmetic ones and misses the ones that need
 > two sources held in mind at once. Closing that gap is the entire argument for the LLM
 > stage, and right now it's a hypothesis with a number attached to its null case rather

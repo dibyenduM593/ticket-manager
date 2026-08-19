@@ -1,8 +1,14 @@
-"""Regenerate every committed artefact from a clean slate, in one command.
+"""Regenerate every artefact in reports/ from a clean slate, in one command.
 
-    python scripts/run_demo.py                # deterministic core only, no API key
-    python scripts/run_demo.py --replay       # from cassettes
-    python scripts/run_demo.py --live         # real API calls
+    python scripts/run_demo.py --posture crisis_mode   # deterministic core, no key
+    python scripts/run_demo.py --live                  # real API calls
+
+Nothing this writes is committed. reports/ is generated output and is gitignored:
+a report checked into the tree is a run frozen at whatever the code did that day,
+and it goes on looking current long after it stops being true.
+
+Without a key there is no posture advisor, so --posture is required. The script will
+not pick the company's values on its behalf.
 
 What it does, in order:
 
@@ -66,17 +72,17 @@ def clear_reports(keep_log: bool) -> None:
 
 
 def batches() -> list[Path]:
-    found = list(paths.batches_dir().glob("batch_*.json"))
+    found = list(paths.eval_dir().glob("batch_*.json"))
     return sorted(found, key=lambda p: json.loads(p.read_text(encoding="utf-8"))["batch_id"])
 
 
-def run_sequence(use_llm: bool, replay: bool) -> None:
+def run_sequence(use_llm: bool, posture: str | None) -> None:
     banner("3. run every batch in sequence, fairness debt carrying over")
     for path in batches():
         ctx = Context.load(path)
         report = run_batch(
             ctx,
-            RunOptions(use_llm=use_llm, replay=replay, assume_yes=True, persist_state=True),
+            RunOptions(posture=posture, use_llm=use_llm, assume_yes=True, persist_state=True),
         )
         md, js = report_mod.write(report)
         served = [r.ticket_id for r in report.ordering.ranked if r.served]
@@ -100,17 +106,17 @@ def run_audit() -> None:
     print(f"\n   wrote {out.relative_to(ROOT)}")
 
 
-def run_eval(use_llm: bool, replay: bool) -> None:
+def run_eval(use_llm: bool) -> None:
     banner("5. planted-conflict eval")
-    result = evaluate_mod.evaluate(use_llm=use_llm, replay=replay)
+    result = evaluate_mod.evaluate(use_llm=use_llm)
     print(evaluate_mod.render(result))
     print(f"\n   wrote {evaluate_mod.write(result).relative_to(ROOT)}")
 
 
-def run_stability(runs: int, use_llm: bool, replay: bool) -> None:
+def run_stability(runs: int, use_llm: bool, posture: str | None) -> None:
     banner(f"6. stability, {runs} reruns of batch 42")
     result = stability_mod.measure(
-        batch_path=batches()[0], runs=runs, use_llm=use_llm, replay=replay
+        batch_path=batches()[0], runs=runs, posture=posture, use_llm=use_llm
     )
     print(stability_mod.render(result))
     print(f"\n   wrote {stability_mod.write(result).relative_to(ROOT)}")
@@ -118,26 +124,31 @@ def run_stability(runs: int, use_llm: bool, replay: bool) -> None:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    mode = ap.add_mutually_exclusive_group()
-    mode.add_argument("--replay", action="store_true", help="serve LLM calls from cassettes")
-    mode.add_argument("--live", action="store_true", help="real API calls; needs ANTHROPIC_API_KEY")
+    ap.add_argument("--live", action="store_true", help="real API calls; needs ANTHROPIC_API_KEY")
+    ap.add_argument("--posture", help="posture to run under; required without --live")
     ap.add_argument("--runs", type=int, default=10, help="stability reruns (default 10)")
     ap.add_argument("--keep-log", action="store_true", help="do not truncate the decision log")
     args = ap.parse_args()
 
-    use_llm = args.live or args.replay
-    mode_name = "live API" if args.live else "cassette replay" if args.replay else "deterministic core only"
-    print(f"regenerating demo artefacts - mode: {mode_name}")
+    if not args.live and not args.posture:
+        ap.error(
+            "--posture is required without --live: with no key there is no advisor, "
+            "and defaulting to `balanced` would be this script picking the company's "
+            "values and calling the choice neutral. Postures are in config/postures/."
+        )
+
+    use_llm = bool(args.live)
+    print(f"regenerating artefacts - mode: {'live API' if use_llm else 'deterministic core only'}")
 
     reseed()
     clear_reports(args.keep_log)
-    run_sequence(use_llm, args.replay)
+    run_sequence(use_llm, args.posture)
     run_audit()
-    run_eval(use_llm, args.replay)
-    run_stability(args.runs, use_llm, args.replay)
+    run_eval(use_llm)
+    run_stability(args.runs, use_llm, args.posture)
 
     banner("done")
-    print(f"   artefacts in {paths.reports_dir().relative_to(ROOT)}/")
+    print(f"   artefacts in {paths.reports_dir().relative_to(ROOT)}/ (generated, not committed)")
     if not use_llm:
         print("\n   ! This was a deterministic run. Every report carries a degraded-run")
         print("     banner naming the stages that did not execute. That is the honest")

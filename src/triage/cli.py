@@ -1,7 +1,7 @@
 """Command line interface.
 
     triage plan                          posture advice only, no ranking
-    triage run --batch data/batches/batch_1.json
+    triage run --batch data/eval/batch_1.json
     triage run --batch ... --posture fairness_first     human override
     triage run --all                     every batch in sequence, debt carrying over
     triage compare --batch ...           all six postures side by side
@@ -9,7 +9,10 @@
     triage audit                         what the posture actually did, across batches
     triage eval                          conflict recall against the planted labels
     triage stability --runs 10           what moves when the same batch is rerun
-    triage run --replay                  zero setup, no API key
+
+With no ANTHROPIC_API_KEY the deterministic core still runs end to end, but the
+judgement stages do not: `run` needs an explicit --posture, and the report carries no
+advice, critique, adjudication or narrative rather than a stand-in for them.
 """
 
 from __future__ import annotations
@@ -31,8 +34,8 @@ from .env import load_dotenv
 from .models import PostureAdvice, Posture
 from .pipeline import (
     Context,
+    NoPostureChosen,
     RunOptions,
-    advise_posture_deterministic,
     order_under_all_postures,
     run_batch,
 )
@@ -68,7 +71,7 @@ console = _utf8_console()
 
 
 def _default_batch() -> Path:
-    return paths.batches_dir() / "batch_1.json"
+    return paths.eval_dir() / "batch_1.json"
 
 
 def _all_batches() -> list[Path]:
@@ -77,7 +80,7 @@ def _all_batches() -> list[Path]:
     Sorted by the batch_id inside the file rather than by filename, because the
     sequence is the point: batch 43 must see the fairness debt batch 42 left behind.
     """
-    found = list(paths.batches_dir().glob("batch_*.json"))
+    found = list(paths.eval_dir().glob("batch_*.json"))
     return sorted(found, key=lambda p: json.loads(p.read_text(encoding="utf-8"))["batch_id"])
 
 
@@ -88,25 +91,30 @@ def _all_batches() -> list[Path]:
 def plan(
     state: Path = typer.Option(None, help="company_state.yaml to reason about"),
     batch: Path = typer.Option(None, help="batch to cost the recommendation against"),
-    replay: bool = typer.Option(False, "--replay", help="serve LLM calls from cassettes"),
-    no_llm: bool = typer.Option(False, "--no-llm", help="deterministic decision tree only"),
 ) -> None:
-    """Read the company state, rank all postures for it, recommend one, name the cost."""
+    """Read the company state, rank all postures for it, recommend one, name the cost.
+
+    Needs a key. Advice is a judgement about what a company should value this week,
+    and there is no version of it this file can compute. The decision tree that used
+    to stand in here read like advice while being a lookup over company_state.yaml.
+    """
     from .llm.client import LLMClient
     from .llm import stages as llm_stages
 
     ctx = Context.load(batch or _default_batch(), company_path=state)
     estimates = ctx.estimates()
 
-    client = LLMClient(cassette_mode="replay" if replay else None)
-    if no_llm:
-        client.api_key = None
-        client.cassette_mode = "off"
-
     result = llm_stages.advise_posture(
-        client, ctx.summary_line(), load_postures(), ctx.charter,
-        ctx.batch.tickets, estimates, advise_posture_deterministic(ctx),
+        LLMClient(), ctx.summary_line(), load_postures(), ctx.charter,
+        ctx.batch.tickets, estimates,
     )
+    if result.value is None:
+        console.print(f"[yellow]no advice:[/yellow] {result.reason}")
+        console.print(
+            "\nEvery posture and what it costs is declared in [bold]config/postures/[/bold]. "
+            "Pick one and pass it to [bold]triage run --posture[/bold]."
+        )
+        raise typer.Exit(1)
     if result.degraded and result.reason:
         console.print(f"[yellow]degraded:[/yellow] {result.reason}\n")
     _print_advice(result.value, ctx.summary_line())
@@ -135,7 +143,6 @@ def run(
     all_batches: bool = typer.Option(False, "--all", help="every batch in sequence, fairness debt carrying over"),
     posture: str = typer.Option(None, help="override the recommendation"),
     state: Path = typer.Option(None, help="company_state.yaml override"),
-    replay: bool = typer.Option(False, "--replay", help="serve LLM calls from cassettes; no API key needed"),
     no_llm: bool = typer.Option(False, "--no-llm", help="deterministic core only"),
     assume_yes: bool = typer.Option(False, "--assume-yes", "-y", help="skip the human confirmation prompt"),
     dry_run: bool = typer.Option(False, "--dry-run", help="do not write state/ or reports/"),
@@ -158,16 +165,19 @@ def run(
         # Reloaded per batch, so batch 43 reads the ledger batch 42 wrote. This is the
         # whole point of running them in sequence: fairness debt is a property of a
         # series, and cannot be observed in a single ordering.
-        ctx = Context.load(path, company_path=state)
+        ctx = Context.load(path, company_path=state, carry_backlog=True)
         options = RunOptions(
             posture=posture,
             use_llm=not no_llm,
-            replay=replay,
             assume_yes=assume_yes,
             persist_state=not dry_run,
             confirm=None if assume_yes else _confirm_posture,
         )
-        result = run_batch(ctx, options)
+        try:
+            result = run_batch(ctx, options)
+        except NoPostureChosen as exc:
+            console.print(f"[red]{exc}[/red]")
+            raise typer.Exit(2)
 
         if not dry_run:
             md_path, json_path = report_mod.write(result)
@@ -346,7 +356,6 @@ def audit(
 
 @app.command("eval")
 def eval_conflicts(
-    replay: bool = typer.Option(False, "--replay", help="serve LLM calls from cassettes"),
     no_llm: bool = typer.Option(False, "--no-llm", help="score the rule-based fallback detector"),
     write_json: bool = typer.Option(True, "--write/--no-write", help="write reports/eval_conflicts.json"),
 ) -> None:
@@ -355,7 +364,7 @@ def eval_conflicts(
     The only place in this project the word "recall" is honest: we cannot know the
     right ranking, but we do know which contradictions we authored.
     """
-    result = evaluate_mod.evaluate(use_llm=not no_llm, replay=replay)
+    result = evaluate_mod.evaluate(use_llm=not no_llm)
     console.print(evaluate_mod.render(result))
     if write_json:
         console.print(f"\n[dim]wrote {evaluate_mod.write(result)}[/dim]")
@@ -369,7 +378,6 @@ def stability(
     batch: Path = typer.Option(None, help="batch json to rerun"),
     runs: int = typer.Option(10, help="how many times"),
     posture: str = typer.Option(None, help="pin the posture, to isolate ordering variance"),
-    replay: bool = typer.Option(False, "--replay", help="serve LLM calls from cassettes"),
     no_llm: bool = typer.Option(False, "--no-llm", help="measure the deterministic core alone"),
     write_json: bool = typer.Option(True, "--write/--no-write", help="write reports/stability_batch_N.json"),
 ) -> None:
@@ -380,7 +388,7 @@ def stability(
     """
     result = stability_mod.measure(
         batch_path=batch, runs=runs, posture=posture,
-        use_llm=not no_llm, replay=replay,
+        use_llm=not no_llm,
     )
     console.print(stability_mod.render(result))
     if write_json:

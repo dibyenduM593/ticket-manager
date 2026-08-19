@@ -8,24 +8,42 @@ entire installation story.
 WHY A SERVER AT ALL, rather than a static page with the scorer ported to JS: a
 JavaScript reimplementation of `scorer.severity()` is a second implementation that
 can silently disagree with the first. Then the demo is showing you a system that
-does not exist. Every number this server returns comes from importing and calling
-the same `src/triage/` code the CLI calls -- `estimation`, `valuation`, `scorer`,
-`charter` -- so the page cannot show a ranking the CLI would not produce.
+does not exist.
+
+This file used to make a weaker version of that promise and quietly break it. It
+shared the scoring arithmetic but reimplemented the run around it: it hand-built its
+Context, so ticket text skipped `ingest.sanitise` -- on the one surface a stranger can
+type into; it called `state.ledger.clear()`, so the real fairness debt was discarded
+and no carried-over ticket could ever appear; and it stopped after stage 7, so nothing
+was ever written back. It now calls `pipeline.run_batch_full`, the same entry point
+`triage run` calls, against a Context assembled by `Context.build`. A submission is a
+real batch: sanitised, carried onto the live backlog, and persisted.
+
+BECAUSE IT PERSISTS, submitting mutates `state/` exactly as the CLI does. That is the
+point -- fairness debt only exists across a series of decisions -- but it means the
+demo drifts as you use it. `POST /api/reset` reseeds, and the response carries a
+receipt naming what was written.
 
 WHERE THE LLM DOES AND DOES NOT ACT: the page takes plain ticket text, so something
 has to turn that into four sources. `web/autofill.py` does, using the model when a
 key is present and keyword heuristics when it is not. That step is READING ONLY --
 it never touches the ranking. Scoring, the charter and the ordering stay entirely
 deterministic, and the page renders which half of each ticket was read from the text
-and which half was invented, because those are not the same kind of claim.
+and which half was invented, because those are not the same kind of claim. The
+pipeline's OWN judgement stages now run too when a key is present; `degraded_stages`
+names the ones that did not.
 """
 
 from __future__ import annotations
 
 import json
+import math
+import random
 import sys
+import threading
 import traceback
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
+from functools import lru_cache
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -36,16 +54,24 @@ from triage.env import load_dotenv  # noqa: E402
 
 load_dotenv()
 
-from triage import correlate, paths, scorer  # noqa: E402
+from triage import estimation, paths  # noqa: E402
 from triage.config import load_charter, load_company_state, load_posture, load_postures  # noqa: E402
 from triage.models import (  # noqa: E402
     Batch,
     CrmRecord,
     Telemetry,
     Ticket,
+    Tier,
     Urgency,
 )
-from triage.pipeline import Context, detect_conflicts_deterministic  # noqa: E402
+from triage.pipeline import (  # noqa: E402
+    Context,
+    NoPostureChosen,
+    RunOptions,
+    next_ad_hoc_batch,
+    run_batch_full,
+)
+from triage.report import write as write_report  # noqa: E402
 from triage.sources import SourceBundle  # noqa: E402
 from triage.state import State  # noqa: E402
 
@@ -54,21 +80,23 @@ from autofill import autofill  # noqa: E402
 from triage.llm.client import LLMClient  # noqa: E402
 
 WEB = Path(__file__).resolve().parent
-AS_OF = datetime(2026, 8, 19, 14, 0, tzinfo=timezone.utc)
 
-#: Categories the scorer has base rates for. Offered as a closed list because a
-#: typo'd category silently falls back to a zero severe-rate, which looks like a
-#: judgement rather than the missing data it is.
-CATEGORIES = [
-    "checkout_failure",
-    "integration_api",
-    "data_integrity",
-    "security",
-    "compliance",
-    "billing",
-    "performance",
-    "ui_cosmetic",
-]
+#: A submission reads state/, decides, and writes it back. Two in flight at once would
+#: interleave those steps and lose one run's fairness debt -- ThreadingHTTPServer makes
+#: that reachable by double-clicking the button.
+_RUN_LOCK = threading.Lock()
+
+def categories() -> list[str]:
+    """The categories the scorer actually has base rates for.
+
+    Read from state/, never hardcoded. The hardcoded list this replaces named eight
+    and claimed to be "categories the scorer has base rates for"; state/categories.json
+    holds eleven. `payment_processing` (severe_rate 0.73), `account_access` and
+    `shipping_config` could not be expressed through the form at all, and anything
+    unlisted was silently rewritten to `integration_api` -- which swaps an honest n=0
+    prior for a real measurement of a different category.
+    """
+    return sorted(State.load(paths.state_dir()).categories)
 
 
 # --------------------------------------------------------------- building a run
@@ -76,17 +104,26 @@ CATEGORIES = [
 
 def _build_context(payload: dict) -> tuple[Context, list[str]]:
     """Turn front-end JSON into a real Context. Notes explain any defaulting, so a
-    number on screen is never the product of a silent assumption."""
+    number on screen is never the product of a silent assumption.
+
+    Every structural decision here now belongs to `Context.build`: sanitisation, the
+    per-batch company state, loading source D, and dragging in the backlog. What is
+    left is the one thing genuinely local to this path -- turning five free-text
+    messages into sources A, B and C, and being explicit about which of those were
+    read and which were invented.
+    """
     notes: list[str] = []
     rows = payload.get("tickets", [])[:5]
     if not rows:
         raise ValueError("no tickets submitted")
 
+    state = State.load(paths.state_dir())
+    batch_id, as_of = next_ad_hoc_batch(state, step_hours=_f(payload.get("advance_hours"), 4.0))
+    known_categories = sorted(state.categories)
+
     tickets: list[Ticket] = []
     telemetry: dict[str, Telemetry] = {}
     crm: dict[str, CrmRecord] = {}
-    ledger_skips: dict[str, int] = {}
-    waited: dict[str, float] = {}
 
     #: Attributing a ticket to a merchant who actually exists is the difference
     #: between a demo where credibility is inert and one where it bites. A known id
@@ -96,29 +133,32 @@ def _build_context(payload: dict) -> tuple[Context, list[str]]:
     real = SourceBundle.load()
 
     for i, r in enumerate(rows):
-        tid = f"TKT-U{i + 1}"
+        #: Scoped to the batch. `TKT-U1` was fine while every run was thrown away, but
+        #: a persisted submission leaves ledger and pending rows behind, and the next
+        #: submission's `TKT-U1` would inherit the previous one's debt.
+        tid = f"TKT-W{batch_id}-{i + 1}"
         claimed_cid = (r.get("customer_id") or "").strip()
         known = claimed_cid in real.crm
-        cid = claimed_cid if known else f"cust-u{i + 1}"
+        cid = claimed_cid if known else f"cust-w{batch_id}-{i + 1}"
         body = (r.get("message") or "").strip()
         if not body:
             continue
 
         category = r.get("category") or "integration_api"
-        if category not in CATEGORIES:
+        if category not in known_categories:
             notes.append(f"{tid}: unknown category {category!r}, used integration_api")
             category = "integration_api"
 
         hours_waited = _f(r.get("waited_hours"), 1.0)
-        waited[tid] = hours_waited
-        ledger_skips[tid] = int(_f(r.get("times_skipped"), 0.0))
 
+        # Same trap as _f: `not in (None, "", False)` dropped a deadline of 0, which
+        # is the single most urgent value this field can carry.
         compliance_h = r.get("compliance_deadline_hours")
-        compliance_at = (
-            AS_OF + timedelta(hours=_f(compliance_h, 0.0))
-            if compliance_h not in (None, "", False)
-            else None
+        has_deadline = not (
+            compliance_h is None or compliance_h is True or compliance_h is False
+            or (isinstance(compliance_h, str) and not compliance_h.strip())
         )
+        compliance_at = as_of + timedelta(hours=_f(compliance_h, 0.0)) if has_deadline else None
 
         tickets.append(
             Ticket(
@@ -129,19 +169,49 @@ def _build_context(payload: dict) -> tuple[Context, list[str]]:
                 category=category,
                 stated_urgency=Urgency(r.get("stated_urgency") or "medium"),
                 blocks_paying_workflow=bool(r.get("blocks_paying_workflow")),
-                submitted_at=AS_OF - timedelta(hours=hours_waited),
+                submitted_at=as_of - timedelta(hours=hours_waited),
                 compliance_deadline_at=compliance_at,
             )
         )
-        telemetry[tid] = Telemetry(
-            ticket_id=tid,
-            users_affected=int(_f(r.get("users_affected"), 0.0)),
-            error_rate=_clamp01(_f(r.get("error_rate"), 0.0)),
-            gmv_at_risk_per_hour=_f(r.get("gmv_at_risk_per_hour"), 0.0),
-            error_signature=(r.get("error_signature") or None) or None,
-            security_exposure=bool(r.get("security_exposure")),
-            data_loss=bool(r.get("data_loss")),
+        r["ticket_id"] = tid
+
+        #: The badge must mean what it says. `telemetry_confirmed: False` is a claim
+        #: that instruments found NOTHING -- so the simulated evidence has to actually
+        #: read that way, not just carry a label next to unchanged numbers. Defaults
+        #: True: a direct API call that never set the flag is not silently zeroed.
+        #:
+        #: A manually-checked "telemetry confirms exposure" is a declared fact from
+        #: the operator, not a random assignment -- it must survive being marked a
+        #: false positive by the (unrelated) random draw, or checking the box could
+        #: be silently overruled by chance.
+        confirmed = r.get("telemetry_confirmed", True)
+        declared_exposure = bool(r.get("security_exposure"))
+        telemetry[tid] = (
+            Telemetry(
+                ticket_id=tid,
+                security_exposure=declared_exposure,
+                notes="marked false positive -- instruments found nothing"
+                if not declared_exposure else "false positive, except a manually confirmed exposure",
+            )
+            if not confirmed
+            else Telemetry(
+                ticket_id=tid,
+                users_affected=int(_f(r.get("users_affected"), 0.0)),
+                error_rate=_clamp01(_f(r.get("error_rate"), 0.0)),
+                gmv_at_risk_per_hour=_f(r.get("gmv_at_risk_per_hour"), 0.0),
+                error_signature=(r.get("error_signature") or None) or None,
+                security_exposure=declared_exposure,
+                data_loss=bool(r.get("data_loss")),
+            )
         )
+        if not confirmed:
+            notes.append(
+                f"{tid}: marked a false positive -- simulated instruments read as "
+                f"absent rather than whatever autofill invented, so the claim stands "
+                f"or falls on credibility alone"
+            )
+        if declared_exposure:
+            notes.append(f"{tid}: telemetry confirms exposure -- manually declared, not read from the text")
         if known:
             # Real billing record wins outright. Nothing the model imagined about
             # tier or ARR may overwrite what the CRM actually says.
@@ -151,34 +221,58 @@ def _build_context(payload: dict) -> tuple[Context, list[str]]:
                 f"claim history apply; the model's guesses at those were discarded"
             )
         else:
+            # An unclaimed sender has no billing record. If the model simulated one
+            # it is used and the page labels it as simulated; if nothing supplied one,
+            # it reads as ABSENT -- free tier, zero ARR -- rather than being invented
+            # here. Mirrors SourceBundle.telemetry_for, which returns zeros for missing
+            # instruments rather than making a measurement up.
+            tier = r.get("tier")
+            if tier not in [t.value for t in Tier]:
+                tier = "free"
+                notes.append(f"{tid}: no billing record -- tier and ARR read as absent, not guessed")
             crm[cid] = CrmRecord(
                 customer_id=cid,
                 name=(r.get("merchant") or f"merchant {i + 1}").strip(),
-                tier=r.get("tier") or "growth",
+                tier=tier,
                 arr=_f(r.get("arr"), 0.0),
             )
 
     if not tickets:
         raise ValueError("every ticket was blank")
 
-    batch = Batch(batch_id=900, label="ad-hoc batch from the demo front end", tickets=tickets, as_of=AS_OF)
+    batch = Batch(
+        batch_id=batch_id,
+        label=f"batch {batch_id} - submitted from the demo front end",
+        tickets=tickets,
+        as_of=as_of,
+    )
 
-    # A fresh ledger, then the waiting/skip history the user declared. Credibility
-    # stays at the 0.5 prior for these invented merchants: we have no history on
-    # them, and saying so is more honest than defaulting to trust or suspicion.
-    state = State.load(paths.state_dir())
-    state = state.clone()
-    state.ledger.clear()
-    state.see_tickets([t.id for t in tickets], batch.batch_id, {t.id: t.submitted_at for t in tickets})
-    for tid, skips in ledger_skips.items():
-        entry = state.ledger.get(tid)
-        if entry is not None:
-            entry.times_skipped = skips
+    # The real state, and the real backlog. This used to clone the state and then call
+    # `state.ledger.clear()`, which threw away the only record of who has been waiting
+    # -- so charter rule R2, the one rule that reads the ledger, had nothing to read
+    # but numbers autofill had invented seconds earlier.
+    ctx = Context.build(
+        batch,
+        sources=SourceBundle.merged(real, telemetry=telemetry, crm=crm),
+        carry_backlog=True,
+    )
 
-    company = load_company_state()
-    ctx = Context(batch=batch, company=company, sources=SourceBundle(telemetry, crm), state=state)
-    ctx.capacity = max(0, int(_f(payload.get("capacity"), 3.0)))
-    if any(t.customer_id.startswith("cust-u") for t in tickets):
+    #: Capacity is the company's, not the page's -- but the slider is the whole point
+    #: of the demo, so an explicit value still wins.
+    if payload.get("capacity") is None:
+        notes.append(
+            f"capacity {ctx.capacity} taken from company state, not from the page"
+        )
+    else:
+        ctx.capacity = max(0, int(_f(payload.get("capacity"), ctx.capacity)))
+
+    if ctx.carried:
+        notes.append(
+            f"{len(ctx.carried)} ticket(s) carried in from previous batches: "
+            f"{', '.join(ctx.carried)} -- these were deferred earlier and are still "
+            f"waiting, and their fairness debt is real rather than declared"
+        )
+    if any(t.customer_id.startswith("cust-w") for t in tickets):
         notes.append(
             "unattributed tickets sit at the 0.5 credibility prior -- an invented "
             "merchant has no claim history, and saying so is more honest than "
@@ -192,11 +286,24 @@ def _run(payload: dict) -> dict:
     #: a separate, clearly-labelled step -- see web/autofill.py for why the claimed
     #: half and the simulated half must not be confused.
     fill_note, used_llm = None, False
+    telemetry_confirmed_map: list[bool] = []   # one entry per textbox slot (0-4)
     if payload.get("autofill"):
         sent = [t for t in payload.get("tickets", [])[:5] if (t.get("message") or "").strip()]
         rows, fill_note, used_llm = autofill([t.get("message", "") for t in sent])
         if not rows:
             raise ValueError("write at least one ticket")
+
+        # ── telemetry confirmation ──────────────────────────────────────
+        # Randomly designate exactly one of the submitted textbox inputs as a
+        # false positive (telemetry_confirmed = false). The rest are confirmed
+        # real claims.  Linked to textbox indices, not ticket IDs.
+        n = len(rows)
+        false_positive_idx = random.randrange(n)
+        telemetry_confirmed_map = [True] * n
+        telemetry_confirmed_map[false_positive_idx] = False
+        for idx, row in enumerate(rows):
+            row["telemetry_confirmed"] = telemetry_confirmed_map[idx]
+
         # The sender is chosen by the person using the page, not read out of the
         # prose. Autofill returns fresh rows, so carry the attribution across --
         # dropping it here silently reverted every ticket to an invented merchant
@@ -204,56 +311,141 @@ def _run(payload: dict) -> dict:
         known_crm = SourceBundle.load().crm
         for row, original in zip(rows, sent):
             cid = original.get("customer_id")
-            if not cid:
-                continue
-            row["customer_id"] = cid
-            if cid in known_crm:
-                # Overwrite what the model imagined about identity and billing, so
-                # the panel showing "what was read" cannot display an invented name
-                # and ARR beside a ticket whose real record the scorer actually used.
-                rec = known_crm[cid]
-                row["merchant"], row["tier"], row["arr"] = rec.name, rec.tier.value, rec.arr
+            if cid:
+                row["customer_id"] = cid
+                if cid in known_crm:
+                    # Overwrite what the model imagined about identity and billing, so
+                    # the panel showing "what was read" cannot display an invented name
+                    # and ARR beside a ticket whose real record the scorer actually used.
+                    rec = known_crm[cid]
+                    row["merchant"], row["tier"], row["arr"] = rec.name, rec.tier.value, rec.arr
+            if original.get("security_exposure"):
+                # A declared fact, not a reading of the text -- the "telemetry
+                # confirms exposure" checkbox. It can only ADD an exposure autofill
+                # did not simulate, never remove one autofill did: the checkbox is
+                # unchecked by default, so absence means "not asserted", not
+                # "confirmed clean".
+                row["security_exposure"] = True
         payload = {**payload, "tickets": rows}
 
-    ctx, notes = _build_context(payload)
-    requested = payload.get("posture") or "revenue_first"
+    #: No default. `pipeline.run_batch` refuses to pick a posture because the weights
+    #: ARE the ethics, and this file used to quietly pick `revenue_first` on the user's
+    #: behalf -- the one thing the whole system says it will not do.
+    requested = payload.get("posture")
+    if requested:
+        load_posture(requested)  # KeyError here is a clean 400, not a stage-5 traceback
 
-    clusters = correlate.cluster_by_signature([t.id for t in ctx.batch.tickets], ctx.sources.telemetry)
-    estimates = ctx.estimates()
-    est_by_id = {e.ticket_id: e for e in estimates}
-    conflicts = detect_conflicts_deterministic(estimates)
+    #: The pipeline's judgement stages CAN run here now -- that is the point of calling
+    #: run_batch rather than reimplementing stages 6 and 7. But they are ~10 serial
+    #: model calls (extract, correlate, conflicts, advise, four critics, adjudicate,
+    #: narrate) behind one blocking POST, which measured over two minutes per
+    #: submission. Defaulting them on makes the page feel broken, so the form opts in
+    #: and `degraded_stages` names what was skipped either way.
+    client = LLMClient()
+    use_llm = bool(payload.get("use_llm", False)) and client.available
+
+    # Build, score and persist as one critical section. Two submissions in flight would
+    # both read the ledger, both decide, and the second would overwrite the first.
+    with _RUN_LOCK:
+        ctx, notes = _build_context(payload)
+        # Snapshot before the run: stage 11 retires served tickets out of the ledger,
+        # so reading `first_seen_batch` afterwards reports None for exactly the carried
+        # tickets that did best -- the ones most worth explaining.
+        first_seen = {
+            tid: e.first_seen_batch for tid, e in ctx.state.ledger.items()
+        }
+        report, orderings_by_posture = run_batch_full(
+            ctx,
+            RunOptions(
+                posture=requested,
+                use_llm=use_llm,
+                assume_yes=True,   # the dropdown IS the confirmation
+                persist_state=True,
+                confirm=None,
+            ),
+        )
+        md_path, _ = write_report(report)
+        served, deferred = [r.ticket_id for r in report.ordering.ranked if r.served], [
+            r.ticket_id for r in report.ordering.ranked if not r.served
+        ]
 
     crm_names = {cid: rec.name for cid, rec in ctx.sources.crm.items()}
-    orderings: dict[str, dict] = {}
-    for name, posture in sorted(load_postures().items()):
-        scored = scorer.score_tickets(estimates, posture, clusters, ctx.charter)
-        ordering = scorer.rank(scored, posture, ctx.capacity, ctx.charter)
-        orderings[name] = _ordering_json(ordering, est_by_id, crm_names)
+    carried = set(ctx.carried)
+    orderings = {
+        name: _ordering_json(o, crm_names, carried, first_seen)
+        for name, o in sorted(orderings_by_posture.items())
+    }
+    est_by_id = {r.ticket_id: r.scored.estimate for r in report.ordering.ranked}
 
     return {
-        "posture": requested,
+        **report.model_dump(mode="json"),
+        "posture": report.posture,
         "capacity": ctx.capacity,
         "orderings": orderings,
         "resolved": payload.get("tickets", []),
+        "carried": [_carried_json(ctx, tid, est_by_id, first_seen) for tid in ctx.carried],
         "autofill_note": fill_note,
         "autofill_used_llm": used_llm,
+        "telemetry_confirmed": telemetry_confirmed_map,
         "postures": {n: p.model_dump() for n, p in sorted(load_postures().items())},
-        "conflicts": [c.model_dump() for c in conflicts],
-        "clusters": [c.model_dump() for c in clusters],
+        # A mutation with no receipt is how a demo drifts without anyone noticing.
+        "persisted": {
+            "batch_id": report.batch_id,
+            "as_of": report.as_of.isoformat(),
+            "served": served,
+            "deferred": deferred,
+            "report": str(md_path.relative_to(paths.repo_root())),
+        },
         "notes": notes,
-        "degraded": [
-            "no API key: conflicts came from the rule-based detector, which finds "
-            "9 of 21 planted contradictions in the shipped batches",
-            "no LLM critique, adjudication or narration -- this is the deterministic floor",
-        ],
     }
 
 
-def _ordering_json(ordering, est_by_id, names: dict[str, str] | None = None) -> dict:
+def _carried_json(ctx: Context, tid: str, est_by_id: dict, first_seen: dict[str, int | None]) -> dict:
+    """A ticket dragged in from the waiting room, with the text it arrived with.
+
+    Rendered above the ranking so an old ticket never appears unexplained. This is the
+    thing the page could not previously show at all.
+
+    `first_seen` is a snapshot taken BEFORE the run: stage 11 pops served tickets out
+    of the ledger, so reading it afterwards would report None for exactly the carried
+    tickets that did best.
+    """
+    ticket = ctx.ticket(tid)
+    est = est_by_id.get(tid)
+    return {
+        "ticket_id": tid,
+        "merchant": ticket.customer_id,
+        "merchant_name": ctx.sources.crm[ticket.customer_id].name
+        if ticket.customer_id in ctx.sources.crm else ticket.customer_id,
+        "subject": ticket.subject,
+        "body": ticket.body,
+        "category": ticket.category,
+        "stated_urgency": ticket.stated_urgency.value,
+        "first_seen_batch": first_seen.get(tid),
+        "times_skipped": est.times_skipped if est else 0,
+        "waiting_hours": round(est.waiting_hours, 1) if est else None,
+        "live_telemetry": ctx.sources.has_telemetry(tid),
+    }
+
+
+def _ordering_json(
+    ordering,
+    names: dict[str, str] | None = None,
+    carried: set[str] | None = None,
+    first_seen: dict[str, int] | None = None,
+) -> dict:
+    """The page's view of an Ordering.
+
+    Kept, and kept here: it is the only producer of the `facts` block the page reads,
+    and a rendering adapter is not a second implementation of the logic. What was
+    deleted is the scoring loop that used to sit above it.
+    """
     names = names or {}
+    carried = carried or set()
+    first_seen = first_seen or {}
     rows = []
     for r in ordering.ranked:
-        est = est_by_id[r.ticket_id]
+        est = r.scored.estimate
         comp = r.scored.components
         rows.append(
             {
@@ -280,7 +472,9 @@ def _ordering_json(ordering, est_by_id, names: dict[str, str] | None = None) -> 
                     "times_skipped": est.times_skipped,
                     "credibility": round(est.credibility, 3),
                     "credibility_evidence": est.credibility_evidence,
-                    "attributed": not est.customer_id.startswith("cust-u"),
+                    "attributed": not est.customer_id.startswith("cust-w"),
+                    "carried": est.ticket_id in carried,
+                    "first_seen_batch": first_seen.get(est.ticket_id),
                     "security_exposure": est.security_exposure,
                     "data_loss": est.data_loss,
                     "category": est.category,
@@ -306,25 +500,44 @@ def _ordering_json(ordering, est_by_id, names: dict[str, str] | None = None) -> 
     }
 
 
-# ------------------------------------------------------------ the shipped demo
+def _reset(payload: dict) -> dict:
+    """Put the demo back to its seeded baseline.
 
+    Necessary rather than a nicety: submissions persist, so without this the demo
+    drifts with use and the numbers in the README stop matching what the page shows.
+    Runs the same seeder CI runs, so "reset" and "reproducible" mean the same thing.
 
-def _shipped() -> dict:
-    """The three committed batches, read from reports/. Read, not recomputed: this
-    tab is showing what the CLI actually produced and committed."""
-    out = []
-    for n in (42, 43, 44):
-        p = REPO / "reports" / f"batch_{n}.json"
-        if p.exists():
-            out.append(json.loads(p.read_text(encoding="utf-8")))
-    audit_p = REPO / "reports" / "posture_audit.json"
-    evalp = REPO / "reports" / "eval_conflicts.json"
+    Deliberately does NOT touch data/eval/, data/sources/ or config/ -- those are
+    inputs, not state. The decision log is a delete, so it needs its own opt-in.
+    """
+    if not payload.get("confirm"):
+        raise ValueError("reset requires {\"confirm\": true} -- it discards the current state")
+
+    sys.path.insert(0, str(REPO / "scripts"))
+    import seed_history
+
+    #: `paths.repo_root()`, not the module-level `REPO` -- the latter is fixed to
+    #: this file's real location on disk. A test that redirects TRIAGE_ROOT to an
+    #: isolated tmpdir must have reset act on that tmpdir, not reseed the real repo
+    #: out from under every other test and the developer's own working tree.
+    root = paths.repo_root()
+    with _RUN_LOCK:
+        seed_history.main(root=root, quiet=True)
+        cleared_log = False
+        if payload.get("clear_log"):
+            log = paths.decision_log_path()
+            if log.exists():
+                log.unlink()
+                cleared_log = True
+
+    st = State.load(paths.state_dir())
     return {
-        "batches": out,
-        "audit": json.loads(audit_p.read_text(encoding="utf-8")) if audit_p.exists() else None,
-        "eval": json.loads(evalp.read_text(encoding="utf-8")) if evalp.exists() else None,
-        "charter": load_charter(),
-        "postures": {n: p.model_dump() for n, p in sorted(load_postures().items())},
+        "reset": True,
+        "restored": ["state/customers.json", "state/categories.json", "state/ledger.json",
+                     "state/pending.json", "state/meta.json", "data/history/resolved_tickets.json"],
+        "decision_log_cleared": cleared_log,
+        "next_batch_id": st.meta.last_batch_id + 1,
+        "as_of": st.meta.as_of.isoformat() if st.meta.as_of else None,
     }
 
 
@@ -344,43 +557,65 @@ class Handler(BaseHTTPRequestHandler):
             st = State.load(paths.state_dir())
             merchants = []
             for cid, rec in bundle.crm.items():
-                h = st.customers.get(cid)
-                claims = getattr(h, "urgency_claims", 0) if h else 0
-                confirmed = getattr(h, "confirmed_severe", 0) if h else 0
+                # `State.customer` already returns an empty history for an unknown id,
+                # and `estimation.credibility` is the one definition of this number.
+                # Computing it a second time here, at a different precision, meant the
+                # dropdown and the ranking could disagree in the last digit about the
+                # single figure the whole demo is built to showcase.
+                h = st.customer(cid)
                 merchants.append({
                     "id": cid, "name": rec.name, "tier": rec.tier.value, "arr": rec.arr,
-                    "credibility": round((confirmed + 1) / (claims + 2), 2),
-                    "claims": claims, "confirmed": confirmed,
+                    "credibility": round(estimation.credibility(h), 3),
+                    "claims": h.urgency_claims, "confirmed": h.confirmed_severe,
                 })
             return self._json(
                 {
                     "merchants": sorted(merchants, key=lambda m: -m["arr"]),
                     "llm_available": client.available,
                     "model": client.model,
-                    "categories": CATEGORIES,
+                    "categories": categories(),
                     "postures": {n: p.model_dump() for n, p in sorted(load_postures().items())},
                     "charter": load_charter(),
-                    "tiers": ["free", "starter", "growth", "enterprise"],
+                    "tiers": [t.value for t in Tier],
                     "urgencies": [u.value for u in Urgency],
+                    # The page shows where the sequence has got to, because every
+                    # submission now moves it.
+                    "batch": {
+                        "next_batch_id": st.meta.last_batch_id + 1,
+                        "as_of": st.meta.as_of.isoformat() if st.meta.as_of else None,
+                        "waiting": sorted(st.pending),
+                    },
                 }
             )
-        if self.path == "/api/shipped":
-            return self._json(_shipped())
         self.send_error(404)
 
     def do_POST(self):
-        if self.path != "/api/triage":
+        if self.path not in ("/api/triage", "/api/reset"):
             return self.send_error(404)
         try:
             n = int(self.headers.get("Content-Length") or 0)
-            payload = json.loads(self.rfile.read(n) or b"{}")
+            payload = json.loads(
+                self.rfile.read(n) or b"{}",
+                # python's json accepts bare NaN/Infinity on the way IN as well.
+                # Refuse them at the boundary rather than letting one reach the scorer.
+                parse_constant=_reject_constant,
+            )
+            if self.path == "/api/reset":
+                return self._json(_reset(payload))
             return self._json(_run(payload))
+        except NoPostureChosen as exc:
+            # User error, not a crash. The message already names the six postures.
+            return self._json({"error": str(exc)}, status=400)
         except Exception as exc:  # surfaced to the page, not swallowed
             traceback.print_exc()
             return self._json({"error": f"{type(exc).__name__}: {exc}"}, status=400)
 
     def _json(self, obj, status=200):
-        body = json.dumps(obj, default=str).encode("utf-8")
+        # allow_nan=False: python happily emits bare NaN and Infinity, which JSON
+        # forbids. Any strict parser rejects the whole response, and a browser's
+        # parser accepts it and renders "NaN" in the score column as though it were
+        # a number the scorer meant. Better to fail here than to ship either.
+        body = json.dumps(obj, default=str, allow_nan=False).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
@@ -399,22 +634,43 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def _f(v, default: float) -> float:
+    """Read a number, or fall back to `default` when the field is genuinely absent.
+
+    ABSENT means None, an empty string, or a bare boolean. It does NOT mean zero, and
+    the distinction is not academic. `v in (None, "", False)` compares by equality, and
+    `0 == False` in Python, so every zero a caller sent was silently replaced by the
+    default: capacity 0 became 3 agents, `waited_hours: 0` became 1 hour, and a
+    compliance deadline of 0 -- due right now -- was dropped so the charter never saw
+    it. Zero is a measurement. Only `is` may be used here.
+    """
+    if v is None or v is True or v is False or (isinstance(v, str) and not v.strip()):
+        return default
     try:
-        if v in (None, "", False):
-            return default
-        return float(v)
+        f = float(v)
     except (TypeError, ValueError):
         return default
+    # NaN and +/-inf survive float() and then poison every arithmetic they touch,
+    # producing a score of NaN that sorts unpredictably and renders as "NaN".
+    return f if math.isfinite(f) else default
 
 
-def _clamp01(x: float) -> float:
-    return max(0.0, min(1.0, x))
+def _reject_constant(name: str):
+    raise ValueError(f"{name} is not a number this system will accept as an input")
+
+
+#: One definition, in estimation.py. This was a third copy.
+_clamp01 = estimation._clamp01
 
 
 def main(port: int = 8000) -> None:
     srv = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    client = LLMClient()
     print(f"triage demo on http://127.0.0.1:{port}")
-    print("deterministic path only -- no API key, no LLM stages")
+    if client.available:
+        print(f"full pipeline via run_batch() -- {client.model}")
+    else:
+        print("no API key: deterministic core only; the report names the stages that did not run")
+    print("submissions WRITE to state/ -- POST /api/reset, or `python scripts/seed_history.py`, restores it")
     try:
         srv.serve_forever()
     except KeyboardInterrupt:

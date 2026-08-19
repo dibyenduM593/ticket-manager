@@ -1,4 +1,4 @@
-"""The LLM client: forced-schema structured output, temperature 0, cassettes.
+"""The LLM client: forced-schema structured output, temperature 0.
 
 Design choices worth defending:
 
@@ -19,24 +19,21 @@ Design choices worth defending:
   posture rationales and the output contract, and it is identical across the four
   critic calls in a batch. Caching it is most of the cost of a run.
 
-* **Cassettes.** Recorded responses give stable CI, a free test suite, and the
-  reviewer's zero-setup path. One artefact, three jobs.
+* **No recorded responses.** There is no replay cache and no canned answer. A stage
+  either reaches the model or it does not run, and the report says which. A recorded
+  reply replayed months later is indistinguishable, on screen, from a live one -- and
+  that is precisely the confusion this system exists to refuse.
 """
 
 from __future__ import annotations
 
-import hashlib
-import json
 import os
 import random
 import time
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any, TypeVar
 
 from pydantic import BaseModel, ValidationError
-
-from .. import paths
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -46,10 +43,6 @@ MAX_ATTEMPTS = 3
 
 class LLMUnavailable(RuntimeError):
     """Raised after retries, or when no key is configured. Callers degrade, not crash."""
-
-
-class CassetteMiss(LLMUnavailable):
-    """Replay mode was asked for a call that was never recorded."""
 
 
 @dataclass
@@ -79,15 +72,11 @@ class LLMClient:
     def __init__(
         self,
         model: str | None = None,
-        cassette_mode: str | None = None,
-        cassette_dir: Path | None = None,
         api_key: str | None = None,
         provider: str | None = None,
     ) -> None:
         self.model = model or os.environ.get("TRIAGE_MODEL", DEFAULT_MODEL)
         self.provider = provider or os.environ.get("TRIAGE_PROVIDER", "anthropic")
-        self.cassette_mode = cassette_mode or os.environ.get("TRIAGE_CASSETTE_MODE", "off")
-        self.cassette_dir = cassette_dir or paths.cassette_dir()
         self.api_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
         self.calls: list[dict[str, Any]] = []
         self._client = None
@@ -98,14 +87,8 @@ class LLMClient:
     # ------------------------------------------------------------------ properties
 
     @property
-    def replaying(self) -> bool:
-        return self.cassette_mode == "replay"
-
-    @property
     def available(self) -> bool:
-        """Can this client serve a call at all?"""
-        if self.replaying:
-            return self.cassette_dir.exists()
+        """Can this client serve a call at all? A key, or nothing."""
         return bool(self.api_key)
 
     # ------------------------------------------------------------------- main call
@@ -122,18 +105,8 @@ class LLMClient:
         max_tokens: int = 4096,
     ) -> T:
         """One call, one validated object. Raises LLMUnavailable; never returns junk."""
-        key = self._cassette_key(stage, system, user, tool_name)
-
-        if self.replaying:
-            payload = self._read_cassette(stage, key)
-            if payload is None:
-                raise CassetteMiss(f"no cassette for stage {stage!r} (key {key[:12]})")
-            return self._validate(schema, payload, stage)
-
         if not self.api_key:
-            raise LLMUnavailable(
-                "ANTHROPIC_API_KEY is not set. Use --replay for the no-key path."
-            )
+            raise LLMUnavailable("ANTHROPIC_API_KEY is not set; this stage cannot run")
 
         payload, usage = self._call_api(
             system=system, user=user, schema=schema,
@@ -141,10 +114,6 @@ class LLMClient:
             max_tokens=max_tokens,
         )
         self.calls.append({"stage": stage, "usage": usage})
-
-        if self.cassette_mode == "record":
-            self._write_cassette(stage, key, payload)
-
         return self._validate(schema, payload, stage)
 
     # ------------------------------------------------------------------- internals
@@ -242,36 +211,9 @@ class LLMClient:
             return schema.model_validate(payload)
         except ValidationError as exc:
             # A schema violation from a forced tool call is rare and worth surfacing
-            # loudly rather than papering over -- the caller degrades to the
-            # deterministic fallback and the report says which stage failed.
+            # loudly rather than papering over -- the stage is then reported as not
+            # having run, which is what actually happened.
             raise LLMUnavailable(f"stage {stage!r} returned a non-conforming object: {exc}") from exc
-
-    # -------------------------------------------------------------------- cassettes
-
-    def _cassette_key(self, stage: str, system: str, user: str, tool_name: str) -> str:
-        h = hashlib.sha256()
-        for part in (self.model, stage, tool_name, system, user):
-            h.update(part.encode("utf-8"))
-            h.update(b"\x00")
-        return h.hexdigest()
-
-    def _cassette_path(self, stage: str, key: str) -> Path:
-        return self.cassette_dir / stage / f"{key[:32]}.json"
-
-    def _read_cassette(self, stage: str, key: str) -> dict[str, Any] | None:
-        path = self._cassette_path(stage, key)
-        if not path.exists():
-            return None
-        with path.open("r", encoding="utf-8") as fh:
-            return json.load(fh)["response"]
-
-    def _write_cassette(self, stage: str, key: str, payload: dict[str, Any]) -> None:
-        path = self._cassette_path(stage, key)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with path.open("w", encoding="utf-8") as fh:
-            json.dump({"stage": stage, "model": self.model, "response": payload},
-                      fh, indent=2, sort_keys=True)
-            fh.write("\n")
 
 
 def _json_schema(model: type[BaseModel]) -> dict[str, Any]:

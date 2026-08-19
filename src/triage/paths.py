@@ -29,8 +29,17 @@ def data_dir() -> Path:
     return repo_root() / "data"
 
 
-def batches_dir() -> Path:
-    return data_dir() / "batches"
+def eval_dir() -> Path:
+    """Ground-truth fixtures for measuring conflict-detection recall.
+
+    These are NOT the system's input. The system's input is whatever a person types
+    into the web form, attributed to a merchant they pick -- see `web/`. What lives
+    here is a set of ticket batches with hand-authored `planted_conflicts`, which
+    exist so `triage eval` can measure recall against contradictions we know are
+    present. Ground truth is the whole point of the directory, and it is also why
+    nothing under `src/triage/llm/` may read that field.
+    """
+    return data_dir() / "eval"
 
 
 def sources_dir() -> Path:
@@ -47,13 +56,6 @@ def state_dir() -> Path:
 
 def reports_dir() -> Path:
     return repo_root() / "reports"
-
-
-def cassette_dir() -> Path:
-    override = os.environ.get("TRIAGE_CASSETTE_DIR")
-    if override:
-        return Path(override)
-    return repo_root() / "tests" / "cassettes"
 
 
 def decision_log_path() -> Path:

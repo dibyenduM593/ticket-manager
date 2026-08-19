@@ -1,12 +1,12 @@
-"""A programmable stand-in for the LLM client.
+"""A programmable stand-in for the LLM client, and the only one in the repo.
 
-Cassettes prove the pipeline works against responses the model really produced. This
-double proves it survives responses the model MIGHT produce -- hallucinated ticket
-IDs, duplicated entries, out-of-range ranks, unknown posture names, schema-shaped
-nonsense. Those are the cases worth testing, and you cannot record a cassette of a
-failure mode you have not yet seen.
+It exists so the pipeline can be exercised against responses the model MIGHT produce
+-- hallucinated ticket IDs, duplicated entries, out-of-range ranks, unknown posture
+names, schema-shaped nonsense. Those are the cases worth testing and none of them can
+be obtained by recording a real call.
 
-Both matter, and they test different things.
+It lives in tests/ and nothing outside tests/ may import it. Shipping code has no
+stand-in for the model: a stage either reaches the API or reports that it did not run.
 """
 
 from __future__ import annotations
@@ -31,10 +31,6 @@ class FakeLLMClient:
     @property
     def available(self) -> bool:
         return self._available
-
-    @property
-    def replaying(self) -> bool:
-        return False
 
     def structured(
         self, *, stage: str, system: str, user: str, schema: type[BaseModel],

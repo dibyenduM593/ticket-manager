@@ -8,7 +8,8 @@ What must hold no matter what the model returns:
   * every cited source name is a real source
   * a malformed or hostile response degrades to the deterministic core, loudly
 
-These run against a programmable double, and against cassettes when they exist.
+These run against a programmable double. There is no recorded-response path:
+nothing in this repo replays an answer the model gave on some earlier day.
 """
 
 from __future__ import annotations
@@ -130,15 +131,36 @@ def test_adjudication_revising_a_nonexistent_ticket_is_ignored(ctx):
     assert result.value.changed_mind is False
 
 
-def test_advice_naming_an_unknown_posture_falls_back(ctx, estimates):
+def test_advice_naming_an_unknown_posture_yields_no_advice(ctx, estimates):
+    """A posture the config does not declare produces NO advice, not a substitute one.
+
+    Silently swapping in another recommendation would put a posture nobody chose in
+    front of a human under the word "recommended".
+    """
     client = FakeLLMClient({"advisor": advice_for("maximise_shareholder_value", ["balanced"])})
-    fallback = _stub_advice()
     result = llm_stages.advise_posture(
-        client, "situation", load_postures(), ctx.charter, ctx.batch.tickets, estimates, fallback
+        client, "situation", load_postures(), ctx.charter, ctx.batch.tickets, estimates
     )
     assert result.degraded
     assert "unknown posture" in result.reason
-    assert result.value.recommended == fallback.recommended
+    assert result.value is None
+
+
+def test_no_key_means_no_advice_at_all(ctx, estimates):
+    result = llm_stages.advise_posture(
+        FakeLLMClient(available=False), "situation", load_postures(), ctx.charter,
+        ctx.batch.tickets, estimates,
+    )
+    assert result.value is None
+    assert result.degraded
+
+
+def test_no_key_means_no_adjudication_object(ctx):
+    """Absent, not a stand-in carrying `changed_mind: false` and a written defence."""
+    ordering, _, _ = run_deterministic(ctx, load_posture("balanced"))
+    result = llm_stages.adjudicate(FakeLLMClient(available=False), ordering, [], ctx.charter)
+    assert result.value is None
+    assert result.degraded
 
 
 # ---------------------------------------------------------- source validity
@@ -233,49 +255,21 @@ def test_all_stages_unavailable_still_produces_a_complete_report(ctx):
     assert report.critiques == []              # honestly empty rather than fabricated
 
 
-def test_client_reports_unavailable_without_key_or_cassettes(tmp_path):
-    client = LLMClient(api_key="", cassette_mode="replay", cassette_dir=tmp_path / "missing")
-    assert not client.available
+def test_client_is_unavailable_without_a_key():
+    assert not LLMClient(api_key="").available
 
 
-def test_replay_mode_never_touches_the_network(tmp_path):
-    client = LLMClient(api_key="", cassette_mode="replay", cassette_dir=tmp_path)
-    tmp_path.mkdir(parents=True, exist_ok=True)
+def test_a_keyless_client_raises_rather_than_answering():
+    """The only two outcomes are a real model response and an exception.
+
+    There is no third path -- no cache, no recorded reply, no stand-in object -- so a
+    caller cannot receive something that looks like an answer and is not one.
+    """
     with pytest.raises(LLMUnavailable):
-        client.structured(
+        LLMClient(api_key="").structured(
             stage="conflicts", system="s", user="u", schema=ConflictResult,
             tool_name="t", tool_description="d",
         )
-
-
-# ------------------------------------------------------------------ cassettes
-
-
-def _cassette_stages() -> list[str]:
-    d = paths.cassette_dir()
-    if not d.exists():
-        return []
-    return [p.name for p in d.iterdir() if p.is_dir() and any(p.glob("*.json"))]
-
-
-@pytest.mark.skipif(not _cassette_stages(), reason="no cassettes recorded yet")
-def test_recorded_cassettes_still_satisfy_their_schemas():
-    """Guards against a schema change silently invalidating the replay path -- which
-    is the reviewer's zero-setup quickstart, so it breaking would be expensive."""
-    import json
-
-    schema_for = {
-        "conflicts": ConflictResult,
-        "correlate": CorrelationResult,
-        "advisor": AdviceResult,
-    }
-    for stage in _cassette_stages():
-        schema = schema_for.get(stage)
-        if schema is None:
-            continue
-        for path in (paths.cassette_dir() / stage).glob("*.json"):
-            payload = json.loads(path.read_text(encoding="utf-8"))["response"]
-            schema.model_validate(payload)
 
 
 # --------------------------------------------------------------------- stubs
@@ -288,13 +282,4 @@ def _stub_critique():
         critic="fairness_campaigner", posture_voice="fairness_first",
         objection="o", specific_tickets=[], strongest_point="s",
         what_it_would_cost_to_agree="c",
-    )
-
-
-def _stub_advice():
-    from triage.models import PostureAdvice
-
-    return PostureAdvice(
-        recommended="balanced", reasoning="r", what_it_costs="c",
-        ranked_alternatives=[], source="fallback",
     )

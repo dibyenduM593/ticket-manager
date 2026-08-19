@@ -18,8 +18,10 @@ History writes only to estimation. The business declares only valuation. They me
 exactly one line of code, in `scorer.severity()`. If history could rewrite values, the
 system would be laundering a judgment call as data.
 
-The separation is enforced by [`tests/test_separation.py`](tests/test_separation.py),
-not just asserted here.
+The separation is a rule about imports: `estimation` may not import `valuation` or
+any posture, and `valuation` may not import `estimation` or `state`. It used to be
+checked by an AST test on every commit; that test is gone, so this is currently a
+convention held up by review rather than by CI.
 
 ---
 
@@ -33,13 +35,13 @@ pip install -e ".[dev]"
 ```
 
 ```bash
-python -m triage run --batch data/batches/batch_1.json --posture revenue_first --no-llm
+python -m triage run --batch data/eval/batch_1.json --posture revenue_first --no-llm
 ```
 
 Score one batch under all six value postures, side by side:
 
 ```bash
-python -m triage compare --batch data/batches/batch_1.json
+python -m triage compare --batch data/eval/batch_1.json
 ```
 
 Run all three batches in sequence — fairness debt carries between them, which is the
@@ -112,15 +114,18 @@ rather than letting you assume.
 
 | Command | What it does | Needs a key |
 |---|---|---|
-| `triage plan` | reads company state, ranks all six postures for it, names the cost | no (`--no-llm`) |
-| `triage run --batch ...` | the full pipeline on one batch | no (`--no-llm`) |
-| `triage run --all` | every batch in sequence, then the audit | no (`--no-llm`) |
+| `triage plan` | reads company state, ranks all six postures for it, names the cost | **yes** — advice is a judgement, and there is no computed stand-in for it |
+| `triage run --batch ...` | the full pipeline on one batch | no (`--no-llm --posture NAME`) |
+| `triage run --all` | every batch in sequence, then the audit | no (`--no-llm --posture NAME`) |
 | `triage compare --batch ...` | six postures side by side | never |
 | `triage why TKT-4471` | one decision, its inputs and its counterfactuals | never |
 | `triage audit` | what the posture did across every batch run so far | never |
 | `triage eval` | conflict recall against the planted labels | no (`--no-llm`) |
 | `triage stability --runs 10` | what moves when the same batch is rerun | no (`--no-llm`) |
-| `scripts/record_cassettes.py` | records cassettes so `--replay` works | **yes** |
+
+Without a key the deterministic core runs end to end, but `--posture` becomes
+required: with no advisor there is nothing to confirm, and defaulting to `balanced`
+would be the tool choosing the company's values while calling the choice neutral.
 
 ---
 
@@ -130,11 +135,11 @@ So a reviewer does not have to hunt.
 
 | Asked for | Where it lives | Notes |
 |---|---|---|
-| ≥5 tickets with conflicting signals | [`data/batches/`](data/batches/) | 6 tickets per batch, 3 batches, 21 hand-authored contradictions |
+| ≥5 tickets with conflicting signals | the web form in [`web/`](web/) | you write the tickets and attribute each to a merchant; [`data/eval/`](data/eval/) holds 17 fixture tickets with 21 hand-authored contradictions, used to measure recall rather than to demo |
 | ≥2 independent, contradicting sources | `ticket` · `telemetry` · `crm` · `resolution history` | 4 sources; the table below names how each one disagrees |
 | ≥3 prioritisation strategies, ranked, with reasoning | [`config/postures/`](config/postures/) → `triage plan` | 6 postures; §5 of every report ranks all of them with the trade each makes |
 | Defends its choice against the alternatives | §5 and §6 of every batch report | §6 is counterfactual regret: the specific tickets that move, and what that costs in dollars or waiting |
-| Structured report per batch | [`reports/batch_42.md`](reports/batch_42.md) | 8 sections; conflicts found → ranking → overrides → strategy ranking → regret → critique → escalations |
+| Structured report per batch | `triage run --batch data/eval/batch_1.json --posture crisis_mode` → `reports/batch_42.md`, or submit tickets in the web form | 8 sections; conflicts found → ranking → overrides → strategy ranking → regret → critique → escalations |
 | Noticed the conflict | §2 of every report | plus `triage eval`, which measures detection against the planted labels rather than asserting it |
 
 The five severity indicators the brief names, and where each enters the decision:
@@ -209,11 +214,19 @@ is a floor, not a preference.
 
 ## What the measurements say
 
-Everything in this section was produced by `python scripts/run_demo.py` and is
-committed in [`reports/`](reports/). **Every number below is from the deterministic
-path**, because this repo has no API key attached to it. Each report carries a banner
-naming the seven stages that did not execute, and the eval and stability output both
-refuse to print a number without saying which detector produced it.
+Reproduce every number here with:
+
+```
+python scripts/run_demo.py --posture crisis_mode
+```
+
+**Nothing in `reports/` is committed.** It is generated output and it is gitignored —
+a checked-in report is a run frozen on the day it was made, and it goes on looking
+current long after it has stopped being true. The numbers below are from the
+deterministic path, because this repo has no API key attached to it; each generated
+report carries a banner naming the stages that did not execute, and the eval and
+stability output both refuse to print a number without saying which detector
+produced it.
 
 ### Conflict detection: 9 / 21
 
@@ -244,7 +257,8 @@ requires holding two sources in mind at once:
   something genuinely low. High credibility must not become automatic promotion.
 
 That gap is the argument for the LLM stage, stated as a number rather than as a
-paragraph. Closing it is what the recorded-cassette run is for.
+paragraph. Closing it takes a key and a live run — there is no recorded-response path
+in this repo, so the LLM detector's recall is unmeasured rather than estimated.
 
 Unmatched detections are reported as candidates, not as false positives: 21 is a lower
 bound on the conflicts present, not a census. Calling an unlabelled detection wrong
@@ -260,7 +274,7 @@ stable prefix         ranks 1-6 identical in every run
 The deterministic core is stable by construction, so this is a control, not a result:
 it confirms the harness measures the pipeline and not the ledger (ten runs that each
 accrued fairness debt would drift). The number worth reporting is the same command
-with cassettes recorded, and this repo cannot produce it yet.
+against a live model, which needs a key this repo does not have.
 
 The harness already reports the things a bare agreement percentage would hide: which
 ranks moved, whether the *served set* changed (a swap inside the served three is
@@ -352,15 +366,17 @@ Built:
   fairness debt, correlation clustering
 - Seeded history (260 resolved tickets, fixed seed) deriving `state/` by counting
 - Three batches with 21 planted conflicts, telemetry and CRM
-- LLM client with forced-schema tool use, temperature 0, prompt caching, cassette
-  record/replay, and a deterministic fallback for every stage
+- LLM client with forced-schema tool use, temperature 0 and prompt caching. No replay
+  cache and no canned answers: a stage either reaches the model or reports that it did
+  not run
 - Conflict detection, posture advisor, four adversarial critics, adjudication
 - Report renderer (markdown + JSON), counterfactual regret table, posture audit,
   append-only decision log
 - Multi-batch sequential run, planted-conflict eval, stability harness, and a
-  one-command regeneration of every committed artefact
-- 147 tests: deterministic core, LLM contract (including hallucinated-entity and
-  hostile-response cases), behavioural guarantees, and the eval and audit themselves
+  one-command regeneration of everything in `reports/`
+- 134 tests: deterministic core, scorer and credibility maths, the eval's own matcher,
+  the LLM contract (including hallucinated-entity and hostile-response cases),
+  behavioural guarantees, and the demo server's HTTP endpoints
 - CI on 3.11 and 3.13 with **no API key configured**, so any accidental reach for the
   network fails there rather than on a reviewer's machine. It also reseeds from the
   fixed seed and fails on any diff against the committed `state/` — "reproducible" is
@@ -368,16 +384,16 @@ Built:
 
 Not done:
 
-- **Cassettes are not recorded, so `--replay` has nothing to serve.** Recording is one
-  command (`python scripts/record_cassettes.py`) and needs an API key this repo does
-  not have. Hand-writing files into `tests/cassettes/` would make `--replay` a
-  re-enactment rather than a recording, so it is not done. Contract tests run against
-  a programmable test double instead, which tests a different and also necessary
-  thing: that the pipeline survives responses the model *might* produce — hallucinated
-  ticket IDs, duplicate entries, out-of-range ranks — which no recording contains.
-- **Every committed number is therefore from the deterministic path.** The interesting
-  measurement — conflict recall with the LLM detector, and stability with real model
-  calls — needs `scripts/record_cassettes.py` run once.
+- **There is no recorded-response path, by choice.** No cassettes, no replay cache, no
+  canned stage output. A recorded reply replayed months later is indistinguishable, on
+  screen, from a live one, and telling those apart is this system's whole subject.
+  Contract tests run against a programmable double confined to `tests/`, which tests a
+  different and also necessary thing: that the pipeline survives responses the model
+  *might* produce — hallucinated ticket IDs, duplicate entries, out-of-range ranks —
+  which no recording contains.
+- **Every number quoted here is therefore from the deterministic path.** The
+  interesting measurement — conflict recall with the LLM detector, and stability with
+  real model calls — needs an API key and a live run.
 - Routing and human handoff are stubbed, as permitted.
 
 ### Known limitations
@@ -400,19 +416,20 @@ Not done:
 - `state/` is a working directory, not a fixture. Every run mutates it. The committed
   copy is the seeded baseline; `python scripts/seed_history.py` restores it, and
   `scripts/run_demo.py` does that for you before every regeneration.
-- Cassette keys hash the exact prompts, so any edit to `llm/prompts.py` invalidates
-  every cassette. Deliberate — a cassette that survived a prompt change would be
-  replaying an answer to a question the system no longer asks — but it means
-  `--replay` degrades quietly to the deterministic path after a prompt edit, and you
-  find out from the degraded banner rather than from an error.
+- Without a key the judgement stages produce nothing rather than something weaker.
+  There is no posture advice, no critique, no adjudication and no narrative, and the
+  report says so in each place instead of printing a stand-in. That is the honest
+  state of a keyless run, but it does mean the keyless demo shows the ranking and the
+  charter only — roughly half of what the system does.
 
 ---
 
 ## What I would do next
 
-- **Record the cassettes and rerun both measurements.** The 9/21 recall figure is the
-  fallback detector's, and the whole argument for the LLM stage is that it closes that
-  gap. Right now that argument is a hypothesis with a number attached to its null case.
+- **Run both measurements against a live model.** The 9/21 recall figure is the
+  rule-based detector's, and the whole argument for the LLM stage is that it closes
+  that gap. Right now that argument is a hypothesis with a number attached to its
+  null case.
 - **Promote on projected wait**, not elapsed wait, so the charter ceiling stops being
   a line the queue lands on.
 - Randomised ranking holdout on a small slice, to measure the causal effect of

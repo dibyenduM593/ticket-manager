@@ -1,9 +1,24 @@
-"""The LLM stages. One function per stage, each with a deterministic fallback.
+"""The LLM stages. One function per stage.
 
 Every function here returns a StageResult so the caller can tell a real answer from a
-fallback without inspecting the value. When a stage degrades, the reason travels to
-the report -- a run that quietly used the fallback and looked identical to a full run
-would be the most dishonest thing this system could do.
+degraded one without inspecting the value. When a stage degrades, the reason travels
+to the report -- a run that quietly stood in for the model and looked identical to a
+full run would be the most dishonest thing this system could do.
+
+WHAT A DEGRADED STAGE IS ALLOWED TO RETURN, and it is a short list:
+
+  * a value COMPUTED FROM THE INPUT -- the urgency heuristic reads the ticket text,
+    signature clustering reads telemetry, the rule-based detector reads the estimates.
+    These are deterministic functions of real data, and their quality is measured
+    rather than asserted -- `triage eval` scores the rule-based detector's recall
+    against the labelled fixtures.
+
+  * nothing. An empty list, an empty string, None.
+
+It may NOT return prose written here and presented as the system's reasoning. There is
+no canned defence, no stand-in narrative, no invented instrument reading. A stage that
+did not run says so and leaves the field empty, because an empty field is legible as
+missing and a fabricated one is not.
 """
 
 from __future__ import annotations
@@ -67,7 +82,7 @@ def extract_urgency(
         )
 
     if not client.available:
-        return fallback("no API key and no cassettes; used the keyword heuristic")
+        return fallback("no API key; urgency intensity came from the keyword heuristic over the ticket text")
 
     try:
         result = client.structured(
@@ -129,7 +144,7 @@ def correlate_tickets(
 
     if not client.available:
         return StageResult.fallback(
-            deterministic, "no API key and no cassettes; clustered on error signature only"
+            deterministic, "no API key; clustered on identical error signature only"
         )
 
     try:
@@ -197,7 +212,7 @@ def detect_conflicts(
     """Stage 4. One call, all tickets, so cross-ticket contradictions are visible."""
     if not client.available:
         return StageResult.fallback(
-            fallback_conflicts, "no API key and no cassettes; used rule-based conflict detection"
+            fallback_conflicts, "no API key; conflicts came from the rule-based detector over the estimates"
         )
 
     try:
@@ -261,13 +276,17 @@ def advise_posture(
     charter: dict[str, Any],
     tickets: list[Ticket],
     estimates: list[TicketEstimate],
-    fallback: PostureAdvice,
 ) -> StageResult:
-    """Stage 5. Advice only -- confirmation happens in the CLI, not here."""
+    """Stage 5. Advice only -- confirmation happens in the CLI, not here.
+
+    With no model there is no advice. There used to be a decision tree here that
+    picked a posture from company state and dressed the posture's own YAML rationale
+    up as a recommendation; it read exactly like advice and was not. Choosing the
+    company's values is the one thing this system must never appear to have done by
+    itself, so the honest degraded answer is None and an explicit `--posture`.
+    """
     if not client.available:
-        return StageResult.fallback(
-            fallback, "no API key and no cassettes; used the company-state decision tree"
-        )
+        return StageResult.fallback(None, "no API key; no posture advice -- a posture must be named")
 
     try:
         result = client.structured(
@@ -287,11 +306,11 @@ def advise_posture(
             max_tokens=6144,
         )
     except LLMUnavailable as exc:
-        return StageResult.fallback(fallback, f"posture advice failed ({exc}); used the decision tree")
+        return StageResult.fallback(None, f"posture advice failed ({exc}); a posture must be named")
 
     if result.recommended not in postures:
         return StageResult.fallback(
-            fallback, f"model recommended unknown posture {result.recommended!r}; used the decision tree"
+            None, f"model recommended unknown posture {result.recommended!r}; a posture must be named"
         )
 
     return StageResult.ok(
@@ -375,7 +394,7 @@ def critique(
     """
     critics = critics or CRITICS
     if not client.available:
-        return StageResult.fallback([], "no API key and no cassettes; ranking is unreviewed")
+        return StageResult.fallback([], "no API key; no critique ran and the ranking is unreviewed")
 
     postures = load_postures()
     out: list[Critique] = []
@@ -462,11 +481,10 @@ def adjudicate(
 ) -> StageResult:
     """Stage 9. Revise or defend."""
     if not client.available or not critiques:
-        return StageResult.fallback(
-            Adjudication(changed_mind=False, defence="No critique stage ran; ranking stands unreviewed.",
-                         source="fallback"),
-            "no critiques to adjudicate; ranking is unreviewed",
-        )
+        # No canned defence. "No critique stage ran; ranking stands unreviewed" was a
+        # sentence written here and rendered in the report's own voice, under a
+        # `changed_mind: false` that no adjudication had actually reached.
+        return StageResult.fallback(None, "no critiques to adjudicate; the ranking is unreviewed")
 
     rendered = "\n\n".join(
         f"CRITIC: {c.critic} (arguing for {c.posture_voice})\n"
@@ -488,10 +506,7 @@ def adjudicate(
             max_tokens=6144,
         )
     except LLMUnavailable as exc:
-        return StageResult.fallback(
-            Adjudication(changed_mind=False, defence=f"Adjudication failed: {exc}", source="fallback"),
-            f"adjudication failed ({exc}); ranking stands unreviewed",
-        )
+        return StageResult.fallback(None, f"adjudication failed ({exc}); the ranking is unreviewed")
 
     valid = {r.ticket_id: r.rank for r in ordering.ranked}
     revisions = [
@@ -537,7 +552,7 @@ def narrate(
     charter: dict[str, Any],
 ) -> StageResult:
     if not client.available:
-        return StageResult.fallback("", "no API key and no cassettes; report is tables only")
+        return StageResult.fallback("", "no API key; no narrative was written and the report is tables only")
 
     try:
         result = client.structured(

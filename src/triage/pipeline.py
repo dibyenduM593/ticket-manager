@@ -12,9 +12,12 @@
     10  report render                          template + 1 LLM narrative
     11  state update                           deterministic
 
-Every LLM stage has a deterministic fallback. On API error after retries the pipeline
-completes using the deterministic core alone and the report states plainly which
-stages were skipped and that the output is therefore unreviewed by the critique loop.
+On API error after retries the pipeline completes using the deterministic core alone
+and the report states plainly which stages did not run. Stages whose output is a
+computation over the input -- extraction, correlation, conflict detection -- keep
+producing it. Stages whose output is judgement -- advice, critique, adjudication,
+narrative -- produce NOTHING rather than a stand-in, and a run with no posture named
+and no advice available stops instead of choosing the company's values for it.
 
 The deterministic core is not just the foundation -- it is the failure mode.
 """
@@ -22,7 +25,7 @@ The deterministic core is not just the foundation -- it is the failure mode.
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Callable
 
@@ -37,6 +40,7 @@ from .models import (
     Conflict,
     Escalation,
     Ordering,
+    PendingTicket,
     Posture,
     PostureAdvice,
     PostureRanking,
@@ -48,6 +52,14 @@ from .models import (
 )
 from .sources import SourceBundle
 from .state import State
+
+
+class NoPostureChosen(RuntimeError):
+    """No posture was named and no advisor ran to suggest one.
+
+    Raised rather than defaulting. A posture is the one input this system will not
+    supply on the user's behalf, because the weights ARE the ethics.
+    """
 
 
 def company_state_for(batch_id: int) -> Path:
@@ -69,14 +81,12 @@ class RunOptions:
         self,
         posture: str | None = None,
         use_llm: bool = True,
-        replay: bool = False,
         assume_yes: bool = False,
         persist_state: bool = True,
         confirm: Callable[[PostureAdvice, dict[str, Posture]], str] | None = None,
     ) -> None:
         self.posture = posture
         self.use_llm = use_llm
-        self.replay = replay
         self.assume_yes = assume_yes
         self.persist_state = persist_state
         self.confirm = confirm
@@ -102,6 +112,71 @@ class Context:
         self.as_of: datetime = batch.as_of or company.as_of
         self.capacity: int = company.operations.agents_available
         self.charter: dict[str, Any] = load_charter()
+        #: Ticket ids dragged in from the waiting room rather than declared by the
+        #: batch. Reported so an old ticket never appears in a ranking unexplained.
+        self.carried: list[str] = []
+
+    @classmethod
+    def build(
+        cls,
+        batch: Batch,
+        company_path: Path | str | None = None,
+        state_root: Path | str | None = None,
+        sources: SourceBundle | None = None,
+        carry_backlog: bool = False,
+    ) -> "Context":
+        """Assemble a Context from a batch that is already in memory.
+
+        THE single place a run is set up, whether the tickets came off disk or out of
+        the web form. Sanitisation, state loading and carry-forward all happen here, so
+        a second entry point cannot quietly skip one of them -- which is exactly what
+        had happened: the demo server hand-built its Context and thereby skipped the
+        injection filter, the per-batch company state, and the backlog entirely.
+
+        `carry_backlog` defaults to FALSE, and that is not timidity. `triage eval`
+        measures conflict recall against conflicts planted in one file, and `triage
+        stability` exists to confirm the harness measures the pipeline and NOT the
+        ledger -- ten runs that each dragged in a growing backlog would drift by
+        construction. Both must see the batch exactly as authored. `triage run` and the
+        web form, which are making real decisions in a sequence, pass True.
+        """
+        batch = ingest.sanitise_batch(batch)
+        state = State.load(state_root)
+        base = sources or SourceBundle.load()
+        carried: list[str] = []
+
+        if carry_backlog:
+            waiting = state.carry_forward([t.id for t in batch.tickets])
+            if waiting:
+                carried = [e.ticket.id for e in waiting]
+                batch = batch.model_copy(
+                    update={"tickets": [e.ticket for e in waiting] + list(batch.tickets)}
+                )
+                # Live rows win; snapshots only fill the gap a typed-in ticket leaves,
+                # since it never had instruments or a billing record of its own.
+                base = SourceBundle.merged(
+                    SourceBundle(
+                        telemetry={
+                            e.ticket.id: e.telemetry_snapshot
+                            for e in waiting if e.telemetry_snapshot is not None
+                        },
+                        crm={
+                            e.ticket.customer_id: e.crm_snapshot
+                            for e in waiting if e.crm_snapshot is not None
+                        },
+                    ),
+                    telemetry=base.telemetry,
+                    crm=base.crm,
+                )
+
+        ctx = cls(
+            batch=batch,
+            company=load_company_state(company_path or company_state_for(batch.batch_id)),
+            sources=base,
+            state=state,
+        )
+        ctx.carried = carried
+        return ctx
 
     @classmethod
     def load(
@@ -109,13 +184,15 @@ class Context:
         batch_path: Path | str,
         company_path: Path | str | None = None,
         state_root: Path | str | None = None,
+        carry_backlog: bool = False,
     ) -> "Context":
-        batch = ingest.load_batch(batch_path)
-        return cls(
-            batch=batch,
-            company=load_company_state(company_path or company_state_for(batch.batch_id)),
-            sources=SourceBundle.load(),
-            state=State.load(state_root),
+        """Assemble a Context from a batch file. `parse_batch`, not `load_batch`:
+        `build` sanitises, and doing it twice would rewrite already-redacted text."""
+        return cls.build(
+            ingest.parse_batch(batch_path),
+            company_path=company_path,
+            state_root=state_root,
+            carry_backlog=carry_backlog,
         )
 
     def estimates(self, intensities: dict[str, float] | None = None) -> list[TicketEstimate]:
@@ -287,57 +364,6 @@ def detect_conflicts_deterministic(estimates: list[TicketEstimate]) -> list[Conf
     return out
 
 
-def advise_posture_deterministic(ctx: Context) -> PostureAdvice:
-    """Fallback posture advice: a small, legible decision tree over company state.
-
-    It is worse than the LLM version and says so. It exists because a run with no API
-    key must still produce a posture and a stated reason for it, rather than silently
-    defaulting to `balanced` and pretending that was a choice.
-    """
-    o, b, c = ctx.company.operations, ctx.company.business, ctx.company.commercial
-
-    if o.active_incident and o.system_load >= 0.85:
-        rec, why = "crisis_mode", (
-            f"System load is {o.system_load:.0%} with an active incident "
-            f"({o.incident_summary}). Blast radius outranks the invoice attached to it."
-        )
-    elif b.churn_pressure == "high" and c.accounts_at_renewal:
-        rec, why = "revenue_first", (
-            f"Churn pressure is high and {', '.join(c.accounts_at_renewal)} "
-            f"{'is' if len(c.accounts_at_renewal) == 1 else 'are'} at renewal."
-        )
-    elif c.sla_breaches_this_month >= 3:
-        rec, why = "fairness_first", (
-            f"{c.sla_breaches_this_month} SLA breaches this month is a pattern, not an accident."
-        )
-    elif o.backlog_depth > 10 * max(1, o.agents_available):
-        rec, why = "speed_optimised", (
-            f"Backlog of {o.backlog_depth} against {o.agents_available} agents. "
-            "Throughput is the binding constraint."
-        )
-    else:
-        rec, why = "balanced", "No signal in company state argues clearly for a stance."
-
-    postures = load_postures()
-    others = sorted((p for name, p in postures.items() if name != rec), key=lambda p: p.name)
-    return PostureAdvice(
-        recommended=rec,
-        reasoning=why,
-        what_it_costs=" ".join(postures[rec].cost_summary.split()),
-        ranked_alternatives=[
-            PostureRanking(
-                posture=p.name,
-                rank=i + 2,
-                reasoning=" ".join(p.rationale.split()),
-                trade_off=" ".join(p.cost_summary.split()),
-            )
-            for i, p in enumerate(others)
-        ],
-        charter_collision_warning=None,
-        source="fallback",
-    )
-
-
 # ------------------------------------------------------------------- regret table
 
 
@@ -496,7 +522,18 @@ def apply_revisions(
 
 
 def run_batch(ctx: Context, options: RunOptions) -> BatchReport:
-    """Stages 1-11. The one entry point `triage run` calls.
+    """The report-only view of `run_batch_full`. What every CLI command calls."""
+    report, _ = run_batch_full(ctx, options)
+    return report
+
+
+def run_batch_full(ctx: Context, options: RunOptions) -> tuple[BatchReport, dict[str, Ordering]]:
+    """Stages 1-11, plus the per-posture counterfactual orderings.
+
+    The orderings are computed here anyway -- the regret table is a diff over them --
+    and were being discarded. The demo front end needs all six to show postures side by
+    side, and rescoring afterwards would score against post-persist state and quietly
+    print different numbers than the ones the decision was made on.
 
     Ordering of operations matters and is deliberate:
       extraction -> correlation -> deterministic pass -> conflicts -> advice ->
@@ -510,10 +547,9 @@ def run_batch(ctx: Context, options: RunOptions) -> BatchReport:
     from .llm.client import LLMClient
     from .llm import stages as llm_stages
 
-    client = LLMClient(cassette_mode="replay" if options.replay else None)
+    client = LLMClient()
     if not options.use_llm:
         client.api_key = None
-        client.cassette_mode = "off"
 
     degraded: list[str] = []
 
@@ -546,13 +582,21 @@ def run_batch(ctx: Context, options: RunOptions) -> BatchReport:
     advice = note(
         llm_stages.advise_posture(
             client, ctx.summary_line(), load_postures(), ctx.charter,
-            ctx.batch.tickets, estimates, advise_posture_deterministic(ctx),
+            ctx.batch.tickets, estimates,
         )
     )
 
     postures = load_postures()
     if options.posture:
         chosen, chosen_by = options.posture, "human (--posture)"
+    elif advice is None:
+        # There is no advice and no posture was named. Defaulting to `balanced` here
+        # would be this file choosing the company's ethics and labelling it neutral --
+        # equal weights are a value judgement too. Stop instead.
+        raise NoPostureChosen(
+            "no posture was given and the advisor did not run, so there is nothing to "
+            "confirm. Pass --posture NAME (one of: " + ", ".join(sorted(postures)) + ")."
+        )
     elif options.assume_yes or options.confirm is None:
         chosen, chosen_by = advice.recommended, f"agent recommendation, auto-confirmed ({advice.source})"
     else:
@@ -614,7 +658,7 @@ def run_batch(ctx: Context, options: RunOptions) -> BatchReport:
         ctx.state.save()
         append_decision_log(report)
 
-    return report
+    return report, all_orderings
 
 
 def _oversubscription_escalations(ordering: Ordering) -> list[Escalation]:
@@ -637,6 +681,19 @@ def _oversubscription_escalations(ordering: Ordering) -> list[Escalation]:
 
 
 # ------------------------------------------------------------------ state update
+
+
+def next_ad_hoc_batch(state: State, step_hours: float = 8.0) -> tuple[int, datetime]:
+    """The id and moment for a batch that did not come from a file.
+
+    Reads how far the sequence has got and returns the next slot. Without this an
+    ad-hoc batch has to invent both -- and a hardcoded id collides with the previous
+    submission's ledger rows, while a frozen clock means waiting debt can never grow,
+    so the 120h ceiling could never be crossed no matter how many times you submitted.
+    """
+    fallback = load_company_state(paths.config_dir() / "company_state.yaml").as_of
+    base = state.meta.as_of or fallback
+    return state.meta.last_batch_id + 1, base + timedelta(hours=step_hours)
 
 
 def apply_batch_outcome(
@@ -665,8 +722,21 @@ def apply_batch_outcome(
                 batch_id=ctx.batch.batch_id,
             )
 
-    ctx.state.accrue_skips(deferred)
+    ctx.state.accrue_skips(deferred, ctx.batch.batch_id)
+    # Keep the deferred tickets whole, so the next batch can carry them rather than
+    # relying on someone re-declaring them in a fixture by hand. Snapshots are taken
+    # only as a fallback for tickets with no live row -- see PendingTicket.
+    ctx.state.defer_tickets([
+        PendingTicket(
+            ticket=ctx.ticket(tid),
+            deferred_in_batch=ctx.batch.batch_id,
+            telemetry_snapshot=ctx.sources.telemetry.get(tid),
+            crm_snapshot=ctx.sources.crm.get(ctx.ticket(tid).customer_id),
+        )
+        for tid in deferred
+    ])
     ctx.state.retire_served(served)
+    ctx.state.advance(ctx.batch.batch_id, ctx.as_of)
     return served, deferred
 
 

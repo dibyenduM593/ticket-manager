@@ -34,7 +34,14 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from triage.estimation import was_actually_severe  # noqa: E402
-from triage.models import CategoryStats, CustomerHistory, Observation, ResolvedTicket  # noqa: E402
+from triage.models import (  # noqa: E402
+    CategoryStats,
+    CustomerHistory,
+    LedgerEntry,
+    Observation,
+    ResolvedTicket,
+    RunMeta,
+)
 
 SEED = 20260819
 ROOT = Path(__file__).resolve().parents[1]
@@ -190,6 +197,8 @@ def main(root: Path | None = None, quiet: bool = False) -> dict[str, object]:
     _write(root / "state" / "categories.json",
            {k: v.model_dump(mode="json") for k, v in categories.items()})
     _write(root / "state" / "ledger.json", ledger)
+    _write(root / "state" / "pending.json", _seed_pending())
+    _write(root / "state" / "meta.json", _seed_meta(root))
 
     if not quiet:
         _report(tickets, customers, categories)
@@ -308,21 +317,74 @@ def _seed_ledger() -> dict:
     times since. At the `as_of` clock it has waited ~112h -- inside the charter's
     120h ceiling, but one batch away from breaching it. That is deliberate: batch 42
     shows the debt climbing, batch 43 shows the charter catching it.
+
+    Built through the model rather than as literal dicts, so the seeder and
+    `State.save` cannot drift apart on shape -- a field added to LedgerEntry would
+    otherwise appear only after the first run and break CI's reseed-and-diff.
     """
-    return {
-        "TKT-4471": {
-            "first_seen_batch": 35,
-            "times_skipped": 6,
-            "first_seen_at": "2026-08-14T22:00:00Z",
-            "last_batch_seen": 41,
-        },
-        "TKT-4463": {
-            "first_seen_batch": 39,
-            "times_skipped": 2,
-            "first_seen_at": "2026-08-17T08:00:00Z",
-            "last_batch_seen": 41,
-        },
+    entries = {
+        "TKT-4471": LedgerEntry(
+            first_seen_batch=35,
+            times_skipped=6,
+            first_seen_at=datetime(2026, 8, 14, 22, 0, tzinfo=timezone.utc),
+            last_batch_seen=41,
+        ),
+        "TKT-4463": LedgerEntry(
+            first_seen_batch=39,
+            times_skipped=2,
+            first_seen_at=datetime(2026, 8, 17, 8, 0, tzinfo=timezone.utc),
+            last_batch_seen=41,
+        ),
     }
+    return {k: v.model_dump(mode="json") for k, v in entries.items()}
+
+
+def _seed_meta(root: Path) -> dict:
+    """Where the sequence has got to, so an ad-hoc batch knows what number it is.
+
+    Derived from the fixtures rather than pinned, so adding a batch file cannot leave
+    this stale. It sits AFTER the last fixture batch on purpose: seeding it at the end
+    of history instead would make the first web submission "batch 42", colliding with
+    data/eval/batch_1.json for both its id and its report filename, and leaving
+    `triage why` unable to say which batch 42 you meant.
+    """
+    last_id, last_at = HISTORY_BATCHES[1], HISTORY_END
+    default_as_of = _read_company_as_of(root)
+    for f in sorted((root / "data" / "eval").glob("batch_*.json")):
+        payload = json.loads(f.read_text(encoding="utf-8"))
+        last_id = max(last_id, int(payload["batch_id"]))
+        at = payload.get("as_of")
+        moment = datetime.fromisoformat(at.replace("Z", "+00:00")) if at else default_as_of
+        if moment and moment > last_at:
+            last_at = moment
+    return RunMeta(last_batch_id=last_id, as_of=last_at).model_dump(mode="json")
+
+
+def _read_company_as_of(root: Path) -> datetime | None:
+    """A batch with no `as_of` of its own happens at the company clock.
+
+    Missing config/ (a test seeding into a bare tmpdir) is not an error here -- it just
+    means no default is available, and per-batch `as_of` values are used instead.
+    """
+    p = root / "config" / "company_state.yaml"
+    if not p.exists():
+        return None
+    for line in p.read_text(encoding="utf-8").splitlines():
+        if line.strip().startswith("as_of:"):
+            raw = line.split(":", 1)[1].strip().strip("\"'")
+            return datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    return None
+
+
+def _seed_pending() -> dict:
+    """The waiting room, before anything has run.
+
+    Empty on purpose. TKT-4471 has ledger debt and IS declared by batch_1.json, so
+    seeding a body for it here would inject a second copy into batch 42 and move the
+    golden orderings. The store fills itself the moment a batch defers something --
+    which is the point: carry-forward stops being a thing a human does by hand.
+    """
+    return {}
 
 
 # ------------------------------------------------------------------------ output

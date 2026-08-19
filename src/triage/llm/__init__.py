@@ -6,10 +6,12 @@ Every module in this package obeys three rules:
    through which model prose becomes a control decision.
 2. It never writes to `state/`. It may PROPOSE an observation as a constrained enum;
    deterministic code validates it and does the arithmetic.
-   (Enforced by tests/test_separation.py::test_the_llm_package_cannot_write_to_state)
-3. It has a deterministic fallback, and when it falls back the report says so.
+3. When it cannot reach the model it either returns a value COMPUTED FROM THE INPUT
+   (the urgency heuristic, signature clustering, the rule-based conflict detector) or
+   it returns nothing. It never returns prose written here and presented as the
+   system's own reasoning, and the report always says which stages did not run.
 """
 
-from .client import CassetteMiss, LLMClient, LLMUnavailable, StageResult
+from .client import LLMClient, LLMUnavailable, StageResult
 
-__all__ = ["LLMClient", "StageResult", "CassetteMiss", "LLMUnavailable"]
+__all__ = ["LLMClient", "StageResult", "LLMUnavailable"]

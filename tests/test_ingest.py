@@ -74,7 +74,7 @@ def test_shouting_is_collapsed_but_still_registers_as_intensity():
 def test_sanitisation_happens_once_at_the_boundary():
     """Nothing downstream ever sees raw text -- including the report renderer, which
     shows the sanitised body and the notes side by side."""
-    batch = load_batch(paths.batches_dir() / "batch_2.json")
+    batch = load_batch(paths.eval_dir() / "batch_2.json")
     injected = next(t for t in batch.tickets if t.id == "TKT-4490")
     assert "Ignore all previous instructions" not in injected.body
     assert injected.sanitisation_notes
@@ -82,7 +82,7 @@ def test_sanitisation_happens_once_at_the_boundary():
 
 
 def test_the_attempt_is_surfaced_not_swallowed():
-    batch = load_batch(paths.batches_dir() / "batch_2.json")
+    batch = load_batch(paths.eval_dir() / "batch_2.json")
     events = sanitisation_events(batch)
     assert len(events) == 1
     assert events[0]["ticket_id"] == "TKT-4490"
@@ -92,12 +92,12 @@ def test_the_attempt_is_surfaced_not_swallowed():
 
 def test_clean_batches_produce_no_events():
     for name in ("batch_1.json", "batch_3.json"):
-        assert sanitisation_events(load_batch(paths.batches_dir() / name)) == []
+        assert sanitisation_events(load_batch(paths.eval_dir() / name)) == []
 
 
 def test_every_shipped_batch_loads_and_validates():
     for name in ("batch_1.json", "batch_2.json", "batch_3.json"):
-        batch = load_batch(paths.batches_dir() / name)
+        batch = load_batch(paths.eval_dir() / name)
         assert batch.tickets
         assert batch.as_of is not None or batch.batch_id == 42
         assert len({t.id for t in batch.tickets}) == len(batch.tickets)
@@ -112,6 +112,6 @@ def test_every_ticket_has_a_crm_record_and_a_known_category():
 
     sources, state = SourceBundle.load(), State.load()
     for name in ("batch_1.json", "batch_2.json", "batch_3.json"):
-        for t in load_batch(paths.batches_dir() / name).tickets:
+        for t in load_batch(paths.eval_dir() / name).tickets:
             sources.crm_for(t.customer_id)
             assert state.category(t.category).n > 0, f"{t.id}: unseen category {t.category}"

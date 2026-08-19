@@ -5,7 +5,8 @@ experiment that settles that, so nothing in here is fitted to data. Every number
 originates in `config/valuation.yaml` or `config/postures/*.yaml`, both of which a
 human wrote on purpose.
 
-Hard rule, enforced by `tests/test_separation.py`: this module may not import
+Hard rule, held by review rather than by a test since the AST check was removed:
+this module may not import
 `estimation` or `state`. It consumes a `TicketEstimate` -- a bag of facts in natural
 units -- and returns dimensionless worth. It cannot look up who filed the ticket, and
 it cannot learn that some accounts complain more than others.

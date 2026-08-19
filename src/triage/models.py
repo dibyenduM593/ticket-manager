@@ -184,6 +184,50 @@ class LedgerEntry(BaseModel):
     times_skipped: int = 0
     first_seen_at: datetime | None = None
     last_batch_seen: int = 0
+    #: The batch that last charged this ticket a skip. Without it `accrue_skips` is
+    #: not idempotent, and re-running a batch inflates fairness debt off nothing --
+    #: which is how a working tree ended up with `times_skipped: 2` on tickets that
+    #: had been deferred exactly once. Mirrors the ticket-id guard in
+    #: `State.record_observation`.
+    last_skip_batch: int = 0
+
+
+class PendingTicket(BaseModel):
+    """A deferred ticket, kept whole so the next batch can actually triage it.
+
+    LedgerEntry is the waiting-room clipboard: how long, how many skips. This is the
+    ticket itself. Without it carry-forward is something a human does by editing a
+    fixture -- which is literally how TKT-4471 gets into batch 43 today, and why a
+    batch typed into the web form could never show an old ticket at all.
+
+    The snapshots are a fallback, not a measurement. A ticket someone typed has no row
+    in data/sources/, so without them a carried web ticket hits `crm_for`'s KeyError on
+    the very next run. Where a live row exists it wins -- replaying a stale measurement
+    as if it were current is the quiet staleness `company_state_for` exists to avoid.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    ticket: Ticket
+    deferred_in_batch: int
+    telemetry_snapshot: Telemetry | None = None
+    crm_snapshot: CrmRecord | None = None
+
+
+class RunMeta(BaseModel):
+    """Where the sequence has got to: the last batch triaged, and when.
+
+    A batch read off disk declares its own id and moment. A batch typed into the web
+    form has neither, and inventing a constant for both -- which is what `batch_id=900`
+    and a frozen `AS_OF` were -- means ids collide across submissions and the clock
+    never advances, so waiting debt can never grow. This is the file that lets an
+    ad-hoc batch be the NEXT batch rather than a batch outside time.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    last_batch_id: int = 0
+    as_of: datetime | None = None
 
 
 class ResolvedTicket(BaseModel):

@@ -143,7 +143,6 @@ def measure(
     runs: int = 10,
     posture: str | None = None,
     use_llm: bool = True,
-    replay: bool = False,
 ) -> StabilityResult:
     """Run one batch `runs` times and collect what varied.
 
@@ -151,8 +150,8 @@ def measure(
     """
     from .pipeline import Context, RunOptions, run_batch
 
-    path = Path(batch_path) if batch_path else paths.batches_dir() / "batch_1.json"
-    mode = "replay" if replay else "live" if use_llm else "deterministic core only"
+    path = Path(batch_path) if batch_path else paths.eval_dir() / "batch_1.json"
+    mode = "live" if use_llm else "deterministic core only"
 
     samples: list[RunSample] = []
     batch_id = 0
@@ -167,7 +166,6 @@ def measure(
             RunOptions(
                 posture=posture,
                 use_llm=use_llm,
-                replay=replay,
                 assume_yes=True,
                 persist_state=False,
             ),

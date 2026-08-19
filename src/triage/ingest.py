@@ -71,35 +71,53 @@ def sanitise(text: str) -> tuple[str, list[str]]:
     return clean, notes
 
 
-def load_batch(path: Path | str) -> Batch:
-    """Load a batch and sanitise every body on the way in.
+def parse_batch(path: Path | str) -> Batch:
+    """Read a batch file into a Batch. NO sanitising -- see sanitise_batch.
 
-    Sanitisation happens exactly once, here, at the boundary. Nothing downstream ever
-    sees the raw text -- including the report renderer, which shows the sanitised
-    body and the notes side by side.
+    Split out from load_batch so that a batch assembled in memory (the web form's
+    five tickets) reaches the same boundary a batch read off disk does. The two must
+    not be separate code paths: the one input a stranger can type into is exactly the
+    one that needs defence 2, and it was the one skipping it.
     """
     p = Path(path)
     with p.open("r", encoding="utf-8") as fh:
         payload = json.load(fh)
 
-    tickets: list[Ticket] = []
-    for raw in payload["tickets"]:
-        clean_body, body_notes = sanitise(raw["body"])
-        clean_subject, subject_notes = sanitise(raw["subject"])
-        notes = [f"body: {n}" for n in body_notes] + [f"subject: {n}" for n in subject_notes]
-        tickets.append(
-            Ticket.model_validate(
-                {**raw, "body": clean_body, "subject": clean_subject, "sanitisation_notes": notes}
-            )
-        )
-
     return Batch(
         batch_id=payload["batch_id"],
         label=payload["label"],
-        tickets=tickets,
+        tickets=[Ticket.model_validate(raw) for raw in payload["tickets"]],
         planted_conflicts=payload.get("planted_conflicts", []),
         as_of=payload.get("as_of"),
     )
+
+
+def sanitise_batch(batch: Batch) -> Batch:
+    """Sanitise every subject and body, recording what was stripped.
+
+    Sanitisation happens exactly once, at Context assembly, so nothing downstream ever
+    sees raw text -- including the report renderer, which shows the sanitised body and
+    the notes side by side.
+
+    Notes are REPLACED rather than appended, so running this twice on the same batch
+    cannot double-count. It still is not idempotent in the strict sense -- a redaction
+    marker is itself clean text -- but a second pass is a no-op rather than a
+    corruption.
+    """
+    tickets: list[Ticket] = []
+    for t in batch.tickets:
+        clean_body, body_notes = sanitise(t.body)
+        clean_subject, subject_notes = sanitise(t.subject)
+        notes = [f"body: {n}" for n in body_notes] + [f"subject: {n}" for n in subject_notes]
+        tickets.append(t.model_copy(update={
+            "body": clean_body, "subject": clean_subject, "sanitisation_notes": notes,
+        }))
+    return batch.model_copy(update={"tickets": tickets})
+
+
+def load_batch(path: Path | str) -> Batch:
+    """Parse and sanitise, in one call. Kept for callers that hold a path."""
+    return sanitise_batch(parse_batch(path))
 
 
 def sanitisation_events(batch: Batch) -> list[dict[str, object]]:

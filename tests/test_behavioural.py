@@ -127,7 +127,7 @@ def test_prompt_injection_does_not_alter_ranking(batch2_ctx):
 def test_the_injection_ranks_exactly_where_an_identical_clean_ticket_would(batch2_ctx, tmp_path):
     """The strongest form of the claim: strip the attack entirely and the rank is
     unchanged. The language contributed nothing, which is the whole point."""
-    raw = json.loads((paths.batches_dir() / "batch_2.json").read_text(encoding="utf-8"))
+    raw = json.loads((paths.eval_dir() / "batch_2.json").read_text(encoding="utf-8"))
     for t in raw["tickets"]:
         if t["id"] == "TKT-4490":
             t["body"] = "Our invoice page shows a total of $412 but the line items add up to $398."

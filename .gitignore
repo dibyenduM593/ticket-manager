@@ -23,7 +23,9 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
-# generated at runtime — state and reports are committed deliberately,
-# but scratch runs are not
-reports/scratch/
+# generated at runtime. reports/ is OUTPUT: batch reports, the decision log, the
+# audit, the eval and the stability numbers are all produced by a run and none of
+# them are committed. A committed report is a run frozen on the day it was made,
+# and it goes on looking current long after it has stopped being true.
+reports/
 *.tmp

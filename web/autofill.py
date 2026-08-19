@@ -26,9 +26,11 @@ So the split below is load-bearing, not decoration:
 The page renders that split and says which half is which. A viewer is never left
 to believe the instruments confirmed something a language model imagined.
 
-Both paths degrade the same way the rest of the system does: LLM when a key or a
-cassette is there, keyword heuristics when there is not, and the reason is reported
-rather than hidden.
+Both paths degrade the same way the rest of the system does: the model when a key is
+there, keyword heuristics when it is not, and the reason is reported rather than
+hidden. The heuristic path READS ONLY. It never fills in an instrument, a tier or an
+ARR it cannot find in the text -- an invented number that looks like a measurement is
+worse than an absent one.
 """
 
 from __future__ import annotations
@@ -43,28 +45,33 @@ sys.path.insert(0, str(REPO / "src"))
 
 from pydantic import BaseModel, Field  # noqa: E402
 
+from triage import paths  # noqa: E402
 from triage.config import load_charter  # noqa: E402
 from triage.env import load_dotenv  # noqa: E402
 from triage.estimation import urgency_intensity_heuristic  # noqa: E402
 from triage.llm.client import LLMClient, LLMUnavailable  # noqa: E402
+from triage.models import Tier, Urgency  # noqa: E402
+from triage.state import State  # noqa: E402
 
 #: This module constructs the client, so it loads the key itself rather than
 #: trusting whoever imported it to have done so. Importing it from a script or a
 #: test must not silently mean "no key", which presents as a capability failure.
 load_dotenv()
 
-CATEGORIES = [
-    "checkout_failure",
-    "integration_api",
-    "data_integrity",
-    "security",
-    "compliance",
-    "billing",
-    "performance",
-    "ui_cosmetic",
-]
-TIERS = ["free", "starter", "growth", "enterprise"]
-URGENCIES = ["low", "medium", "high", "critical"]
+def categories() -> list[str]:
+    """The categories the scorer actually has base rates for, read from state/.
+
+    Called at validation time rather than captured once, because a test may redirect
+    TRIAGE_ROOT after this module is imported. The hardcoded list this replaces was
+    missing `payment_processing`, `account_access` and `shipping_config`, so the model
+    was told those categories did not exist and every such ticket was relabelled
+    `integration_api`.
+    """
+    return sorted(State.load(paths.state_dir()).categories)
+
+
+TIERS = [t.value for t in Tier]
+URGENCIES = [u.value for u in Urgency]
 
 
 # --------------------------------------------------------------- the contract
@@ -74,7 +81,7 @@ class ReadFromText(BaseModel):
     """Source A only. Every field here is a property of what the merchant WROTE."""
 
     merchant: str = Field(description="A plausible short shop name. Invent one if none is given.")
-    category: str = Field(description=f"One of: {', '.join(CATEGORIES)}")
+    category: str = Field(description=f"One of: {', '.join(categories())}")
     stated_urgency: str = Field(description=f"How urgent THEY say it is. One of: {', '.join(URGENCIES)}")
     urgency_intensity: float = Field(
         ge=0.0, le=1.0,
@@ -172,7 +179,7 @@ def autofill(texts: list[str], client: LLMClient | None = None) -> tuple[list[di
             )
     return (
         _by_keyword(live),
-        "no API key and no cassettes; fields came from keyword heuristics, which are "
+        "no API key; fields came from keyword heuristics, which are "
         "cruder than the model and will miss anything not spelled out literally",
         False,
     )
@@ -213,11 +220,11 @@ def _merge(text: str, got: OneTicket) -> dict:
     return {
         "message": text,
         "merchant": c.merchant,
-        "category": c.category if c.category in CATEGORIES else "integration_api",
+        "category": c.category if c.category in categories() else "integration_api",
         "stated_urgency": c.stated_urgency if c.stated_urgency in URGENCIES else "medium",
         "blocks_paying_workflow": c.blocks_paying_workflow,
         "compliance_deadline_hours": c.compliance_deadline_hours,
-        "tier": s.tier if s.tier in TIERS else "growth",
+        "tier": s.tier if s.tier in TIERS else "free",
         "arr": s.arr,
         "users_affected": s.users_affected,
         "error_rate": s.error_rate,
@@ -275,6 +282,7 @@ def _keyword_row(text: str) -> dict:
     users = _first_int(re.search(r"([\d,]{2,})\s*(?:users|customers|buyers|merchants|shops)", low))
     waited = _first_float(re.search(r"(\d+)\s*(?:hours?|hrs?)\s*(?:ago|now|waiting)", low))
     skipped = _first_int(re.search(r"(\d+)(?:st|nd|rd|th)?\s*time (?:i|we) (?:have )?asked", low))
+    deadline = _deadline_hours(low)
 
     return {
         "message": text,
@@ -282,12 +290,13 @@ def _keyword_row(text: str) -> dict:
         "category": category,
         "stated_urgency": urgency,
         "blocks_paying_workflow": bool(re.search(r"cannot (buy|pay|checkout)|blocking (sales|customers)", low)),
-        "compliance_deadline_hours": 24.0 if category == "compliance" else None,
-        # Instruments the heuristic cannot invent responsibly: left at zero, which
-        # the scorer correctly treats as an unsupported claim rather than as proof
-        # of absence. That is the honest reading of "we measured nothing".
-        "tier": "growth",
-        "arr": 50000.0,
+        # A deadline is reported only when the merchant actually names one. There is
+        # no default: "compliance category, therefore 24 hours" would be this file
+        # inventing a statutory clock nobody wrote down.
+        "compliance_deadline_hours": deadline,
+        # No tier and no ARR. The heuristic has no billing record to read and will not
+        # guess at one -- the server reads these as absent, which is the honest report
+        # of "we have no CRM row for this sender".
         "users_affected": users or 0,
         "error_rate": 0.0,
         "gmv_at_risk_per_hour": 0.0,
@@ -308,8 +317,9 @@ def _keyword_row(text: str) -> dict:
                 )
             ),
         },
-        "_why": "keyword heuristics only -- instruments left at zero, so this ticket "
-                "rests on its claim alone and is discounted by credibility",
+        "_why": "keyword heuristics read the text only; no instrument, billing or "
+                "ledger values were supplied, so this ticket rests on its claim alone "
+                "and is discounted by credibility",
     }
 
 
@@ -317,6 +327,30 @@ def _charter_note() -> str:
     c = load_charter()
     names = ", ".join(r.get("name", "") for r in c.get("rules", []))
     return f"For context, the triage charter's non-negotiable rules are: {names}."
+
+
+_DEADLINE = re.compile(
+    r"(\d+)\s*(hours?|hrs?|days?)[^.]{0,40}?(deadline|statutory|regulator|gdpr|legally)"
+    r"|(deadline|statutory|regulator|gdpr|legally)[^.]{0,40}?(\d+)\s*(hours?|hrs?|days?)"
+)
+
+
+def _deadline_hours(low: str) -> float | None:
+    """Hours to a deadline the merchant actually named, or None.
+
+    None is the important return value. The old behaviour -- category is compliance,
+    therefore 24 hours -- put a statutory clock on a ticket nobody said had one, and
+    the charter's compliance floor then fired on a number this file made up.
+    """
+    m = _DEADLINE.search(low)
+    if not m:
+        return None
+    groups = [g for g in m.groups() if g]
+    number = next((g for g in groups if g.isdigit()), None)
+    if number is None:
+        return None
+    unit = next((g for g in groups if g.startswith(("hour", "hr", "day"))), "hours")
+    return float(number) * (24.0 if unit.startswith("day") else 1.0)
 
 
 def _first_int(m) -> int:

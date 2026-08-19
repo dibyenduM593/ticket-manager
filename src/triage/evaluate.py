@@ -278,7 +278,6 @@ def match_batch(
 def evaluate(
     batch_paths: list[Path] | None = None,
     use_llm: bool = False,
-    replay: bool = False,
 ) -> EvalResult:
     """Run conflict detection over every batch and score it against the labels.
 
@@ -291,14 +290,13 @@ def evaluate(
     from .llm import stages as llm_stages
     from .pipeline import Context, detect_conflicts_deterministic
 
-    batch_paths = batch_paths or sorted(paths.batches_dir().glob("batch_*.json"))
+    batch_paths = batch_paths or sorted(paths.eval_dir().glob("batch_*.json"))
 
-    client = LLMClient(cassette_mode="replay" if replay else None)
+    client = LLMClient()
     if not use_llm:
         client.api_key = None
-        client.cassette_mode = "off"
 
-    detector = "llm (replay)" if replay else "llm (live)" if use_llm else "deterministic"
+    detector = "llm (live)" if use_llm else "deterministic"
     out: list[BatchEval] = []
 
     for path in batch_paths:

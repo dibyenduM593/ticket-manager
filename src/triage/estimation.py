@@ -5,7 +5,8 @@ long will this really take, how long has this waited.
 
 It does NOT answer: whether a $480k account matters more than 2,000 free users.
 
-Hard rule, enforced by `tests/test_separation.py`: this module may not import
+Hard rule, held by review rather than by a test since the AST check was removed:
+this module may not import
 `valuation`, `config.load_postures`, or anything under `config/postures/`. A company
 with the opposite ethics would compute identical numbers from this file.
 

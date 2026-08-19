@@ -60,19 +60,19 @@ def repo_root() -> Path:
 @pytest.fixture
 def batch1_ctx() -> Context:
     """Real batch 1 against real state. State is cloned so tests never mutate state/."""
-    ctx = Context.load(paths.batches_dir() / "batch_1.json")
+    ctx = Context.load(paths.eval_dir() / "batch_1.json")
     return Context(ctx.batch, ctx.company, ctx.sources, ctx.state.clone())
 
 
 @pytest.fixture
 def batch2_ctx() -> Context:
-    ctx = Context.load(paths.batches_dir() / "batch_2.json")
+    ctx = Context.load(paths.eval_dir() / "batch_2.json")
     return Context(ctx.batch, ctx.company, ctx.sources, ctx.state.clone())
 
 
 @pytest.fixture
 def batch3_ctx() -> Context:
-    ctx = Context.load(paths.batches_dir() / "batch_3.json")
+    ctx = Context.load(paths.eval_dir() / "batch_3.json")
     return Context(ctx.batch, ctx.company, ctx.sources, ctx.state.clone())
 
 

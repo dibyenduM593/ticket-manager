@@ -3,12 +3,14 @@
     "first_seen_at": "2026-08-17T08:00:00Z",
     "first_seen_batch": 39,
     "last_batch_seen": 41,
+    "last_skip_batch": 0,
     "times_skipped": 2
   },
   "TKT-4471": {
     "first_seen_at": "2026-08-14T22:00:00Z",
     "first_seen_batch": 35,
     "last_batch_seen": 41,
+    "last_skip_batch": 0,
     "times_skipped": 6
   }
 }

@@ -1,324 +1,878 @@
 <!doctype html>
 <html lang="en">
+
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Triage agent — demo</title>
-<style>
-  :root{
-    --bg:#0d1117; --panel:#161b22; --panel2:#1c2128; --line:#30363d;
-    --ink:#e6edf3; --dim:#8b949e; --faint:#6e7681;
-    --acc:#58a6ff; --ok:#3fb950; --warn:#d29922; --bad:#f85149; --charter:#bc8cff;
-    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
-  }
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--ink);
-       font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
-  h1,h2,h3{margin:0;font-weight:600;letter-spacing:-.01em}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Triage agent — demo</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --panel: #161b22;
+      --panel2: #1c2128;
+      --line: #30363d;
+      --ink: #e6edf3;
+      --dim: #8b949e;
+      --faint: #6e7681;
+      --acc: #58a6ff;
+      --ok: #3fb950;
+      --warn: #d29922;
+      --bad: #f85149;
+      --charter: #bc8cff;
+      --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    }
 
-  header{padding:18px 24px;border-bottom:1px solid var(--line);background:var(--panel)}
-  header h1{font-size:17px}
-  header p{margin:5px 0 0;color:var(--dim);font-size:13px;max-width:78ch}
-  code{font-family:var(--mono);color:var(--acc);font-size:12px}
+    * {
+      box-sizing: border-box
+    }
 
-  .tabs{display:flex;gap:2px;padding:0 24px;background:var(--panel);
-        border-bottom:1px solid var(--line)}
-  .tab{padding:9px 14px;border:0;background:none;color:var(--dim);cursor:pointer;
-       font-size:13px;border-bottom:2px solid transparent;font-family:inherit}
-  .tab:hover{color:var(--ink)}
-  .tab.on{color:var(--ink);border-bottom-color:var(--acc)}
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 14px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif
+    }
 
-  .wrap{display:grid;grid-template-columns:minmax(320px,400px) 1fr}
-  @media(max-width:980px){.wrap{grid-template-columns:1fr}}
-  .left{border-right:1px solid var(--line);padding:16px;min-height:calc(100vh - 114px)}
-  .right{padding:16px;min-width:0}
+    h1,
+    h2,
+    h3 {
+      margin: 0;
+      font-weight: 600;
+      letter-spacing: -.01em
+    }
 
-  .banner{margin:0 0 14px;padding:9px 12px;border-radius:6px;font-size:12px;
-          background:rgba(210,153,34,.1);border:1px solid rgba(210,153,34,.35);color:#e3b341}
-  .banner b{color:#f0c674}
-  .banner.info{background:rgba(88,166,255,.08);border-color:rgba(88,166,255,.3);color:#a5cdff}
-  .banner.info b{color:var(--acc)}
+    header {
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel)
+    }
 
-  .tk{display:flex;gap:9px;margin-bottom:9px;align-items:flex-start}
-  select.from{margin-top:4px;font-size:11.5px;padding:4px 7px;color:var(--dim)}
-  .num{width:22px;height:22px;border-radius:6px;background:var(--panel2);
-       border:1px solid var(--line);display:grid;place-items:center;flex:none;
-       font:600 11px var(--mono);color:var(--faint);margin-top:5px}
-  textarea{font-family:inherit;font-size:13px;color:var(--ink);background:var(--panel);
-    border:1px solid var(--line);border-radius:8px;padding:9px 11px;width:100%;
-    resize:vertical;min-height:56px;line-height:1.5}
-  textarea:focus{outline:0;border-color:var(--acc);background:var(--panel2)}
-  textarea::placeholder{color:var(--faint)}
+    header h1 {
+      font-size: 17px
+    }
 
-  label{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.06em;
-        color:var(--faint);margin-bottom:4px}
-  select,input,button{font-family:inherit;font-size:13px;color:var(--ink);
-    background:var(--panel2);border:1px solid var(--line);border-radius:6px;
-    padding:7px 9px;width:100%}
-  select:focus,input:focus{outline:0;border-color:var(--acc)}
-  .grid{display:grid;grid-template-columns:1fr 110px;gap:9px;margin:14px 0 12px}
-  .btn{background:var(--acc);border-color:var(--acc);color:#08121f;font-weight:600;
-       cursor:pointer;padding:10px}
-  .btn:hover{filter:brightness(1.1)}
-  .btn:disabled{opacity:.55;cursor:default;filter:none}
-  .btn.ghost{background:var(--panel2);color:var(--dim);border-color:var(--line);
-             font-weight:500;padding:7px}
-  .btn.ghost:hover{border-color:var(--acc);color:var(--acc);filter:none}
-  .row2{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:9px}
+    header p {
+      margin: 5px 0 0;
+      color: var(--dim);
+      font-size: 13px;
+      max-width: 78ch
+    }
 
-  .sec{margin-bottom:20px}
-  .sec>h3{font-size:12px;text-transform:uppercase;letter-spacing:.07em;
-          color:var(--faint);margin-bottom:9px;font-weight:600}
+    code {
+      font-family: var(--mono);
+      color: var(--acc);
+      font-size: 12px
+    }
 
-  table{width:100%;border-collapse:collapse;font-size:13px}
-  th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.06em;
-     color:var(--faint);font-weight:600;padding:0 8px 6px;border-bottom:1px solid var(--line)}
-  td{padding:9px 8px;border-bottom:1px solid #21262d;vertical-align:top}
-  tr.deferred td{opacity:.5}
-  .mono{font-family:var(--mono);font-size:12px}
-  .rk{font:600 13px var(--mono);color:var(--dim)}
-  .pill{display:inline-block;padding:1px 6px;border-radius:20px;font-size:10px;
-        font-weight:600;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
-  .p-ok{background:rgba(63,185,80,.15);color:var(--ok)}
-  .p-no{background:rgba(139,148,158,.15);color:var(--dim)}
-  .p-ch{background:rgba(188,140,255,.16);color:var(--charter)}
-  .why{color:var(--dim);font-size:12px;line-height:1.45;margin-top:3px}
-  .bar{height:3px;background:var(--panel2);border-radius:2px;overflow:hidden;
-       margin-top:5px;max-width:100px}
-  .bar i{display:block;height:100%;background:var(--acc)}
+    .tabs {
+      display: flex;
+      gap: 2px;
+      padding: 0 24px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--line)
+    }
 
-  .ov{background:rgba(188,140,255,.07);border:1px solid rgba(188,140,255,.3);
-      border-radius:8px;padding:11px 13px;margin-bottom:8px}
-  .ov .h{font:600 12px var(--mono);color:var(--charter);margin-bottom:5px}
-  .ov .s{color:var(--dim);font-size:12px;font-style:italic;margin-bottom:5px}
-  .ov .d{font-size:12px}
+    .tab {
+      padding: 9px 14px;
+      border: 0;
+      background: none;
+      color: var(--dim);
+      cursor: pointer;
+      font-size: 13px;
+      border-bottom: 2px solid transparent;
+      font-family: inherit
+    }
 
-  /* what the reader saw */
-  .rd{border:1px solid var(--line);border-radius:8px;margin-bottom:9px;overflow:hidden}
-  .rd .msg{padding:9px 11px;background:var(--panel);font-size:12.5px;
-           border-bottom:1px solid var(--line);color:var(--ink)}
-  .rd .msg .tid{font:600 11px var(--mono);color:var(--faint);margin-right:7px}
-  .halves{display:grid;grid-template-columns:1fr 1fr}
-  @media(max-width:640px){.halves{grid-template-columns:1fr}}
-  .half{padding:9px 11px}
-  .half+.half{border-left:1px solid var(--line)}
-  .half h4{margin:0 0 6px;font-size:10px;text-transform:uppercase;letter-spacing:.06em;
-           font-weight:600}
-  .h-read h4{color:var(--acc)}
-  .h-sim h4{color:var(--warn)}
-  .f{display:flex;justify-content:space-between;gap:10px;font-size:12px;
-     padding:1.5px 0}
-  .f span:first-child{color:var(--faint)}
-  .f span:last-child{font-family:var(--mono);text-align:right}
-  .tag{display:inline-block;padding:1px 5px;border-radius:4px;font-size:10px;
-       font-weight:600;margin-right:4px;margin-top:5px}
-  .t-inj{background:rgba(248,81,73,.15);color:var(--bad)}
-  .t-und{background:rgba(210,153,34,.15);color:var(--warn)}
+    .tab:hover {
+      color: var(--ink)
+    }
 
-  .cf{border-left:2px solid var(--warn);padding:7px 0 7px 11px;margin-bottom:9px;font-size:12px}
-  .cf .t{font:600 12px var(--mono);color:var(--warn)}
-  .cf .c{color:var(--dim);margin-top:3px}
-  .cf .c b{color:var(--ink);font-weight:600}
-  .cf .r{margin-top:4px}
+    .tab.on {
+      color: var(--ink);
+      border-bottom-color: var(--acc)
+    }
 
-  .mx{overflow-x:auto}
-  .mx table{min-width:620px}
-  .mx td{padding:6px 8px;font-family:var(--mono);font-size:12px}
-  .cell{padding:3px 6px;border-radius:4px;display:block}
-  .c-ok{background:rgba(63,185,80,.12);color:#56d364}
-  .c-no{color:var(--faint)}
-  .c-ch{background:rgba(188,140,255,.15);color:var(--charter);font-weight:600}
+    .wrap {
+      display: grid;
+      grid-template-columns: minmax(320px, 400px) 1fr
+    }
 
-  .note{color:var(--faint);font-size:11.5px;line-height:1.55;margin-top:9px}
-  .empty{color:var(--faint);text-align:center;padding:60px 20px;font-size:13px}
-  .err{background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.4);
-       color:#ff7b72;padding:10px 12px;border-radius:6px;font-size:12px;
-       font-family:var(--mono);margin-bottom:12px;white-space:pre-wrap}
-  .kv{display:grid;grid-template-columns:auto 1fr;gap:3px 14px;font-size:12px}
-  .kv dt{color:var(--faint)}
-  .kv dd{margin:0;font-family:var(--mono)}
-  .pane{display:none}.pane.on{display:block}
-  .full{padding:16px 24px}
-  .rules li{margin-bottom:12px}
+    @media(max-width:980px) {
+      .wrap {
+        grid-template-columns: 1fr
+      }
+    }
 
-  /* plain-English charter */
-  #chart p{margin:0;color:var(--dim);font-size:13px}
-  #chart p b{color:var(--ink)}
-  .rule{border:1px solid var(--line);border-left:2px solid var(--charter);
-        border-radius:8px;padding:13px 15px;margin-bottom:11px;max-width:84ch}
-  .rh{font-size:14px;font-weight:600;margin-bottom:7px;display:flex;gap:9px;
-      align-items:baseline;line-height:1.4}
-  .rid{font:600 10px var(--mono);color:var(--charter);background:rgba(188,140,255,.13);
-       padding:2px 6px;border-radius:4px;flex:none}
-  .rm{color:var(--ink)!important;font-size:13px;margin:0 0 10px!important}
-  .cr{display:grid;grid-template-columns:88px 1fr;gap:11px;font-size:12.5px;
-      padding:3px 0;align-items:baseline}
-  .cr>span{color:var(--faint);font-size:10px;text-transform:uppercase;
-           letter-spacing:.06em;padding-top:2px}
-  .cr>div{color:var(--dim)}
-  .rex{margin-top:10px;padding:8px 11px;background:var(--panel);border-radius:6px;
-       font-size:12.5px;color:var(--dim);line-height:1.5}
-  .rex b{color:var(--acc);font-weight:600}
-</style>
+    .left {
+      border-right: 1px solid var(--line);
+      padding: 16px;
+      min-height: calc(100vh - 114px)
+    }
+
+    .right {
+      padding: 16px;
+      min-width: 0
+    }
+
+    .banner {
+      margin: 0 0 14px;
+      padding: 9px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      background: rgba(210, 153, 34, .1);
+      border: 1px solid rgba(210, 153, 34, .35);
+      color: #e3b341
+    }
+
+    .banner b {
+      color: #f0c674
+    }
+
+    .banner.info {
+      background: rgba(88, 166, 255, .08);
+      border-color: rgba(88, 166, 255, .3);
+      color: #a5cdff
+    }
+
+    .banner.info b {
+      color: var(--acc)
+    }
+
+    .tk {
+      display: flex;
+      gap: 9px;
+      margin-bottom: 9px;
+      align-items: flex-start
+    }
+
+    select.from {
+      margin-top: 4px;
+      font-size: 11.5px;
+      padding: 4px 7px;
+      color: var(--dim)
+    }
+
+    .num {
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      background: var(--panel2);
+      border: 1px solid var(--line);
+      display: grid;
+      place-items: center;
+      flex: none;
+      font: 600 11px var(--mono);
+      color: var(--faint);
+      margin-top: 5px
+    }
+
+    textarea {
+      font-family: inherit;
+      font-size: 13px;
+      color: var(--ink);
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 9px 11px;
+      width: 100%;
+      resize: vertical;
+      min-height: 56px;
+      line-height: 1.5
+    }
+
+    textarea:focus {
+      outline: 0;
+      border-color: var(--acc);
+      background: var(--panel2)
+    }
+
+    textarea::placeholder {
+      color: var(--faint)
+    }
+
+    label {
+      display: block;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--faint);
+      margin-bottom: 4px
+    }
+
+    select,
+    input,
+    button {
+      font-family: inherit;
+      font-size: 13px;
+      color: var(--ink);
+      background: var(--panel2);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 7px 9px;
+      width: 100%
+    }
+
+    select:focus,
+    input:focus {
+      outline: 0;
+      border-color: var(--acc)
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 110px;
+      gap: 9px;
+      margin: 14px 0 12px
+    }
+
+    .btn {
+      background: var(--acc);
+      border-color: var(--acc);
+      color: #08121f;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 10px
+    }
+
+    .btn:hover {
+      filter: brightness(1.1)
+    }
+
+    .btn:disabled {
+      opacity: .55;
+      cursor: default;
+      filter: none
+    }
+
+    .btn.ghost {
+      background: var(--panel2);
+      color: var(--dim);
+      border-color: var(--line);
+      font-weight: 500;
+      padding: 7px
+    }
+
+    .btn.ghost:hover {
+      border-color: var(--acc);
+      color: var(--acc);
+      filter: none
+    }
+
+    .row2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px;
+      margin-top: 9px
+    }
+
+    .sec {
+      margin-bottom: 20px
+    }
+
+    .sec>h3 {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      color: var(--faint);
+      margin-bottom: 9px;
+      font-weight: 600
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px
+    }
+
+    th {
+      text-align: left;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--faint);
+      font-weight: 600;
+      padding: 0 8px 6px;
+      border-bottom: 1px solid var(--line)
+    }
+
+    td {
+      padding: 9px 8px;
+      border-bottom: 1px solid #21262d;
+      vertical-align: top
+    }
+
+    tr.deferred td {
+      opacity: .5
+    }
+
+    .mono {
+      font-family: var(--mono);
+      font-size: 12px
+    }
+
+    .rk {
+      font: 600 13px var(--mono);
+      color: var(--dim)
+    }
+
+    .pill {
+      display: inline-block;
+      padding: 1px 6px;
+      border-radius: 20px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      white-space: nowrap
+    }
+
+    .p-ok {
+      background: rgba(63, 185, 80, .15);
+      color: var(--ok)
+    }
+
+    .p-no {
+      background: rgba(139, 148, 158, .15);
+      color: var(--dim)
+    }
+
+    .p-ch {
+      background: rgba(188, 140, 255, .16);
+      color: var(--charter)
+    }
+
+    .why {
+      color: var(--dim);
+      font-size: 12px;
+      line-height: 1.45;
+      margin-top: 3px
+    }
+
+    .bar {
+      height: 3px;
+      background: var(--panel2);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: 5px;
+      max-width: 100px
+    }
+
+    .bar i {
+      display: block;
+      height: 100%;
+      background: var(--acc)
+    }
+
+    .ov {
+      background: rgba(188, 140, 255, .07);
+      border: 1px solid rgba(188, 140, 255, .3);
+      border-radius: 8px;
+      padding: 11px 13px;
+      margin-bottom: 8px
+    }
+
+    .ov .h {
+      font: 600 12px var(--mono);
+      color: var(--charter);
+      margin-bottom: 5px
+    }
+
+    .ov .s {
+      color: var(--dim);
+      font-size: 12px;
+      font-style: italic;
+      margin-bottom: 5px
+    }
+
+    .ov .d {
+      font-size: 12px
+    }
+
+    /* what the reader saw */
+    .rd {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      margin-bottom: 9px;
+      overflow: hidden
+    }
+
+    .rd .msg {
+      padding: 9px 11px;
+      background: var(--panel);
+      font-size: 12.5px;
+      border-bottom: 1px solid var(--line);
+      color: var(--ink)
+    }
+
+    .rd .msg .tid {
+      font: 600 11px var(--mono);
+      color: var(--faint);
+      margin-right: 7px
+    }
+
+    .halves {
+      display: grid;
+      grid-template-columns: 1fr 1fr
+    }
+
+    @media(max-width:640px) {
+      .halves {
+        grid-template-columns: 1fr
+      }
+    }
+
+    .half {
+      padding: 9px 11px
+    }
+
+    .half+.half {
+      border-left: 1px solid var(--line)
+    }
+
+    .half h4 {
+      margin: 0 0 6px;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      font-weight: 600
+    }
+
+    .h-read h4 {
+      color: var(--acc)
+    }
+
+    .h-sim h4 {
+      color: var(--warn)
+    }
+
+    .f {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 12px;
+      padding: 1.5px 0
+    }
+
+    .f span:first-child {
+      color: var(--faint)
+    }
+
+    .f span:last-child {
+      font-family: var(--mono);
+      text-align: right
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 600;
+      margin-right: 4px;
+      margin-top: 5px
+    }
+
+    .t-inj {
+      background: rgba(248, 81, 73, .15);
+      color: var(--bad)
+    }
+
+    .t-und {
+      background: rgba(210, 153, 34, .15);
+      color: var(--warn)
+    }
+
+    .t-conf {
+      background: rgba(63, 185, 80, .15);
+      color: var(--ok)
+    }
+
+    .t-fp {
+      background: rgba(248, 81, 73, .18);
+      color: var(--bad);
+      border: 1px solid rgba(248, 81, 73, .3)
+    }
+
+    .cf {
+      border-left: 2px solid var(--warn);
+      padding: 7px 0 7px 11px;
+      margin-bottom: 9px;
+      font-size: 12px
+    }
+
+    .cf .t {
+      font: 600 12px var(--mono);
+      color: var(--warn)
+    }
+
+    .cf .c {
+      color: var(--dim);
+      margin-top: 3px
+    }
+
+    .cf .c b {
+      color: var(--ink);
+      font-weight: 600
+    }
+
+    .cf .r {
+      margin-top: 4px
+    }
+
+    .mx {
+      overflow-x: auto
+    }
+
+    .mx table {
+      min-width: 620px
+    }
+
+    .mx td {
+      padding: 6px 8px;
+      font-family: var(--mono);
+      font-size: 12px
+    }
+
+    .cell {
+      padding: 3px 6px;
+      border-radius: 4px;
+      display: block
+    }
+
+    .c-ok {
+      background: rgba(63, 185, 80, .12);
+      color: #56d364
+    }
+
+    .c-no {
+      color: var(--faint)
+    }
+
+    .c-ch {
+      background: rgba(188, 140, 255, .15);
+      color: var(--charter);
+      font-weight: 600
+    }
+
+    .note {
+      color: var(--faint);
+      font-size: 11.5px;
+      line-height: 1.55;
+      margin-top: 9px
+    }
+
+    .empty {
+      color: var(--faint);
+      text-align: center;
+      padding: 60px 20px;
+      font-size: 13px
+    }
+
+    .err {
+      background: rgba(248, 81, 73, .1);
+      border: 1px solid rgba(248, 81, 73, .4);
+      color: #ff7b72;
+      padding: 10px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-family: var(--mono);
+      margin-bottom: 12px;
+      white-space: pre-wrap
+    }
+
+    .kv {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 3px 14px;
+      font-size: 12px
+    }
+
+    .kv dt {
+      color: var(--faint)
+    }
+
+    .kv dd {
+      margin: 0;
+      font-family: var(--mono)
+    }
+
+    .pane {
+      display: none
+    }
+
+    .pane.on {
+      display: block
+    }
+
+    .full {
+      padding: 16px 24px
+    }
+
+    .rules li {
+      margin-bottom: 12px
+    }
+
+    /* plain-English charter */
+    #chart p {
+      margin: 0;
+      color: var(--dim);
+      font-size: 13px
+    }
+
+    #chart p b {
+      color: var(--ink)
+    }
+
+    .rule {
+      border: 1px solid var(--line);
+      border-left: 2px solid var(--charter);
+      border-radius: 8px;
+      padding: 13px 15px;
+      margin-bottom: 11px;
+      max-width: 84ch
+    }
+
+    .rh {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 7px;
+      display: flex;
+      gap: 9px;
+      align-items: baseline;
+      line-height: 1.4
+    }
+
+    .rid {
+      font: 600 10px var(--mono);
+      color: var(--charter);
+      background: rgba(188, 140, 255, .13);
+      padding: 2px 6px;
+      border-radius: 4px;
+      flex: none
+    }
+
+    .rm {
+      color: var(--ink) !important;
+      font-size: 13px;
+      margin: 0 0 10px !important
+    }
+
+    .cr {
+      display: grid;
+      grid-template-columns: 88px 1fr;
+      gap: 11px;
+      font-size: 12.5px;
+      padding: 3px 0;
+      align-items: baseline
+    }
+
+    .cr>span {
+      color: var(--faint);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      padding-top: 2px
+    }
+
+    .cr>div {
+      color: var(--dim)
+    }
+
+    .rex {
+      margin-top: 10px;
+      padding: 8px 11px;
+      background: var(--panel);
+      border-radius: 6px;
+      font-size: 12.5px;
+      color: var(--dim);
+      line-height: 1.5
+    }
+
+    .rex b {
+      color: var(--acc);
+      font-weight: 600
+    }
+  </style>
 </head>
+
 <body>
 
-<header>
-  <h1>Conflicting-signal ticket triage</h1>
-  <p>Write up to five tickets in plain English. Everything else is read for you.
-     The ranking comes from importing the real <code>src/triage/</code> modules —
-     the same code <code>triage run</code> calls — so this page cannot show you an
-     ordering the CLI would not produce.</p>
-</header>
+  <header>
+    <h1>Conflicting-signal ticket triage</h1>
+    <p>Write up to five tickets in plain English. Everything else is read for you.
+      The ranking comes from importing the real <code>src/triage/</code> modules —
+      the same code <code>triage run</code> calls — so this page cannot show you an
+      ordering the CLI would not produce.</p>
+  </header>
 
-<nav class="tabs">
-  <button class="tab on" data-pane="try">Try it</button>
-  <button class="tab" data-pane="ship">The shipped demo</button>
-  <button class="tab" data-pane="chart">The charter</button>
-</nav>
+  <nav class="tabs">
+    <button class="tab on" data-pane="try">Try it</button>
+    <button class="tab" data-pane="chart">The charter</button>
+  </nav>
 
-<div class="pane on" id="try">
-<div class="wrap">
-  <div class="left">
-    <div id="keybanner"></div>
+  <div class="pane on" id="try">
+    <div class="wrap">
+      <div class="left">
+        <div id="keybanner"></div>
 
-    <div id="tickets"></div>
+        <div id="tickets"></div>
 
-    <div class="grid">
-      <div><label>Posture — the values dial</label><select id="posture"></select></div>
-      <div><label>Capacity</label><input type="number" id="capacity" value="3" min="0" max="5"></div>
+        <div class="grid">
+          <div><label>Posture — the values dial</label><select id="posture"></select></div>
+          <div><label>Capacity</label><input type="number" id="capacity" value="3" min="0" max="5"></div>
+        </div>
+
+        <button class="btn" id="go">Triage these tickets</button>
+        <div class="row2">
+          <button class="btn ghost" id="ex1">Load an example</button>
+          <button class="btn ghost" id="clr">Clear</button>
+        </div>
+
+        <p class="note">Capacity is what makes this a decision rather than a list.
+          Tickets past the line are deferred — and only deferred tickets accrue
+          fairness debt.</p>
+      </div>
+
+      <div class="right">
+        <div id="err"></div>
+        <div id="out">
+          <div class="empty">Write a ticket, or load an example.</div>
+        </div>
+      </div>
     </div>
-
-    <button class="btn" id="go">Triage these tickets</button>
-    <div class="row2">
-      <button class="btn ghost" id="ex1">Load an example</button>
-      <button class="btn ghost" id="clr">Clear</button>
-    </div>
-
-    <p class="note">Capacity is what makes this a decision rather than a list.
-      Tickets past the line are deferred — and only deferred tickets accrue
-      fairness debt.</p>
   </div>
 
-  <div class="right">
-    <div id="err"></div>
-    <div id="out"><div class="empty">Write a ticket, or load an example.</div></div>
+  <div class="pane full" id="chart">
+    <div class="empty">Loading charter…</div>
   </div>
-</div>
-</div>
 
-<div class="pane full" id="ship"><div class="empty">Loading committed reports…</div></div>
-<div class="pane full" id="chart"><div class="empty">Loading charter…</div></div>
+  <script>
+    const $ = s => document.querySelector(s);
+    const $$ = s => [...document.querySelectorAll(s)];
+    const esc = s => String(s ?? '').replace(/[&<>"]/g, c =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const n2 = x => Number(x).toFixed(2);
+    const money = x => !x ? '$0' : x >= 1000 ? '$' + Math.round(x / 1000) + 'k' : '$' + Math.round(x);
 
-<script>
-const $  = s => document.querySelector(s);
-const $$ = s => [...document.querySelectorAll(s)];
-const esc = s => String(s ?? '').replace(/[&<>"]/g, c =>
-  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const n2 = x => Number(x).toFixed(2);
-const money = x => !x ? '$0' : x >= 1000 ? '$'+Math.round(x/1000)+'k' : '$'+Math.round(x);
+    let META = null, LAST = null;
+    let TEXT = ['', '', '', '', ''];
+    let FROM = ['', '', '', '', ''];  // customer_id per ticket, '' = unknown sender
+    let EXPO = [false, false, false, false, false];  // manually declared: telemetry confirms exposure
 
-let META=null, LAST=null;
-let TEXT = ['','','','',''];
-let FROM = ['','','','',''];  // customer_id per ticket, '' = unknown sender
+    const EXAMPLE = [
+      "Checkout is completely down for us. We are losing thousands a minute. This is CRITICAL, please escalate immediately.",
+      "Hi — I noticed I can see another shop's order details on my dashboard, including partial card numbers. It's probably just a display glitch on my end though, no rush at all.",
+      "Following up on my integration issue again. This is the seventh time I have asked and it has been over 128 hours now.",
+      "URGENT!!! The checkout button is the wrong shade of blue on mobile!!! Our brand guidelines are very clear about this!!!",
+      "Payments intermittently failing during our flash sale — about half of attempts. We're a small shop but this is our biggest day of the year.",
+    ];
 
-const EXAMPLE = [
-  "Checkout is completely down for us. We are losing thousands a minute. This is CRITICAL, please escalate immediately.",
-  "Hi — I noticed I can see another shop's order details on my dashboard, including partial card numbers. It's probably just a display glitch on my end though, no rush at all.",
-  "Following up on my integration issue again. This is the seventh time I have asked and it has been over 128 hours now.",
-  "URGENT!!! The checkout button is the wrong shade of blue on mobile!!! Our brand guidelines are very clear about this!!!",
-  "Payments intermittently failing during our flash sale — about half of attempts. We're a small shop but this is our biggest day of the year.",
-];
-
-function drawTickets(){
-  const opts = m => `<option value="">— unknown sender (0.50 prior) —</option>` +
-    (META.merchants||[]).map(x=>`<option value="${esc(x.id)}" ${m===x.id?'selected':''}>${esc(x.name)}
+    function drawTickets() {
+      const opts = m => `<option value="">— unknown sender (0.50 prior) —</option>` +
+        (META.merchants || []).map(x => `<option value="${esc(x.id)}" ${m === x.id ? 'selected' : ''}>${esc(x.name)}
        · ${esc(x.tier)} · ${x.credibility.toFixed(2)} credibility</option>`).join('');
-  $('#tickets').innerHTML = TEXT.map((t,i)=>`
-    <div class="tk"><span class="num">${i+1}</span>
+      $('#tickets').innerHTML = TEXT.map((t, i) => `
+    <div class="tk"><span class="num">${i + 1}</span>
       <div style="flex:1;min-width:0">
         <textarea data-i="${i}" rows="2"
-          placeholder="${i===0?'What did the merchant write?':'…'}">${esc(t)}</textarea>
+          placeholder="${i === 0 ? 'What did the merchant write?' : '…'}">${esc(t)}</textarea>
         <select class="from" data-i="${i}">${opts(FROM[i])}</select>
+        <label style="display:flex;align-items:center;gap:6px;margin-top:4px;font-size:12px;color:var(--faint)">
+          <input type="checkbox" class="expo" data-i="${i}" ${EXPO[i] ? 'checked' : ''}>
+          telemetry confirms exposure
+        </label>
       </div>
     </div>`).join('');
-  $$('#tickets textarea').forEach(el=>
-    el.addEventListener('input', e => TEXT[e.target.dataset.i] = e.target.value));
-  $$('#tickets select.from').forEach(el=>
-    el.addEventListener('change', e => FROM[e.target.dataset.i] = e.target.value));
-}
+      $$('#tickets textarea').forEach(el =>
+        el.addEventListener('input', e => TEXT[e.target.dataset.i] = e.target.value));
+      $$('#tickets select.from').forEach(el =>
+        el.addEventListener('change', e => FROM[e.target.dataset.i] = e.target.value));
+      $$('#tickets input.expo').forEach(el =>
+        el.addEventListener('change', e => EXPO[e.target.dataset.i] = e.target.checked));
+    }
 
-/* ── ranking ───────────────────────────────────────────────────────── */
-function renderOrdering(o, cap){
-  const rows = o.ranked.map(r=>`
-    <tr class="${r.served?'':'deferred'}">
+    /* ── ranking ───────────────────────────────────────────────────────── */
+    function renderOrdering(o, cap) {
+      const rows = o.ranked.map(r => `
+    <tr class="${r.served ? '' : 'deferred'}">
       <td class="rk">${r.rank}</td>
-      <td><div><b>${esc(r.merchant_name||r.ticket_id)}</b>
+      <td><div><b>${esc(r.merchant_name || r.ticket_id)}</b>
           <span class="mono" style="color:var(--faint)">${esc(r.ticket_id)}</span></div>
         <div class="why">${esc(r.why)}</div></td>
-      <td class="mono">${n2(r.score)}<div class="bar"><i style="width:${Math.round(r.score*100)}%"></i></div></td>
-      <td>${r.served?'<span class="pill p-ok">served</span>':'<span class="pill p-no">deferred</span>'}
-        ${r.charter_promoted?'<br><span class="pill p-ch">⚖ charter</span>':''}</td>
+      <td class="mono">${n2(r.score)}<div class="bar"><i style="width:${Math.round(r.score * 100)}%"></i></div></td>
+      <td>${r.served ? '<span class="pill p-ok">served</span>' : '<span class="pill p-no">deferred</span>'}
+        ${r.charter_promoted ? '<br><span class="pill p-ch">⚖ charter</span>' : ''}</td>
     </tr>`).join('');
-  const ovs = o.overrides.map(v=>`
+      const ovs = o.overrides.map(v => `
     <div class="ov"><div class="h">${esc(v.rule_id)}/${esc(v.clause_id)} · ${esc(v.ticket_id)} · rank ${v.from_rank} → ${v.to_rank}</div>
       <div class="s">“${esc(v.statement)}”</div><div class="d">${esc(v.detail)}</div></div>`).join('');
-  return `<div class="sec"><h3>Ranking — capacity ${cap}, so ranks 1–${cap} are served</h3>
+      return `<div class="sec"><h3>Ranking — capacity ${cap}, so ranks 1–${cap} are served</h3>
       <table><thead><tr><th>#</th><th>ticket &amp; why</th><th>score</th><th>outcome</th></tr></thead>
       <tbody>${rows}</tbody></table></div>
-    ${ovs?`<div class="sec"><h3>Charter overrides — where the posture was refused</h3>${ovs}
+    ${ovs ? `<div class="sec"><h3>Charter overrides — where the posture was refused</h3>${ovs}
       <p class="note">Promotion is <b>minimal</b>: a protected ticket moves to the lowest
       rank that satisfies the rule, never to the top. The charter is a floor, not a
       preference — no opinion about what should be first, only about what cannot be
-      last.</p></div>`:''}`;
-}
+      last.</p></div>`: ''}`;
+    }
 
-/* ── what was read vs what was simulated ───────────────────────────── */
-function renderRead(rows, note, usedLLM, ordering){
-  // Credibility is HISTORY, not a reading of this ticket, so it is shown on the
-  // read side with the evidence behind it rather than among the invented figures.
-  const byId = Object.fromEntries((ordering?.ranked||[]).map(r=>[r.ticket_id,r.facts]));
-  const evid = i => (byId['TKT-U'+(i+1)]||{}).credibility_evidence || '';
-  const attr = i => !!(byId['TKT-U'+(i+1)]||{}).attributed;
-  const cred = i => {
-    const f = byId['TKT-U'+(i+1)];
-    if(!f) return '—';
-    return `${n2(f.credibility)}${f.attributed?'':' (prior)'}`;
-  };
-  const cards = rows.map((r,i)=>`
+    /* ── what was read vs what was simulated ───────────────────────────── */
+    function renderRead(rows, note, usedLLM, ordering, teleConf) {
+      // Credibility is HISTORY, not a reading of this ticket, so it is shown on the
+      // read side with the evidence behind it rather than among the invented figures.
+      // Ids are batch-scoped (TKT-W{batch}-{n}), not a fixed 'TKT-U{n}' -- a
+      // persisted submission leaves rows behind, so the next batch's ids differ.
+      const byId = Object.fromEntries((ordering?.ranked || []).map(r => [r.ticket_id, r.facts]));
+      const evid = r => (byId[r.ticket_id] || {}).credibility_evidence || '';
+      const attr = r => !!(byId[r.ticket_id] || {}).attributed;
+      const cred = r => {
+        const f = byId[r.ticket_id];
+        if (!f) return '—';
+        return `${n2(f.credibility)}${f.attributed ? '' : ' (prior)'}`;
+      };
+      teleConf = teleConf || [];
+      const cards = rows.map((r, i) => {
+        const confirmed = r.telemetry_confirmed !== undefined ? r.telemetry_confirmed : (teleConf[i] !== false);
+        const confTag = confirmed
+          ? '<span class="tag t-conf">✓ TELEMETRY CONFIRMED</span>'
+          : '<span class="tag t-fp">✗ FALSE POSITIVE</span>';
+        return `
     <div class="rd">
-      <div class="msg"><span class="tid">TKT-U${i+1}</span>${esc(r.message)}</div>
+      <div class="msg"><span class="tid">${esc(r.ticket_id || ('#' + (i + 1)))}</span>${esc(r.message)}
+        <span style="float:right">${confTag}</span></div>
       <div class="halves">
         <div class="half h-read">
           <h4>read from the text — source A</h4>
           <div class="f"><span>merchant</span><span>${esc(r.merchant)}</span></div>
-          <div class="f"><span>credibility</span><span>${cred(i)}</span></div>
-          ${evid(i)?`<div class="note" style="margin:2px 0 0">${esc(evid(i))}</div>`:''}
+          <div class="f"><span>credibility</span><span>${cred(r)}</span></div>
+          ${evid(r) ? `<div class="note" style="margin:2px 0 0">${esc(evid(r))}</div>` : ''}
           <div class="f"><span>category</span><span>${esc(r.category)}</span></div>
           <div class="f"><span>they say</span><span>${esc(r.stated_urgency)}</span></div>
           <div class="f"><span>intensity</span><span>${n2(r._read.intensity)}</span></div>
-          ${r.compliance_deadline_hours?`<div class="f"><span>deadline</span><span>${r.compliance_deadline_hours}h</span></div>`:''}
-          ${r._read.injection?'<span class="tag t-inj">injection attempt</span>':''}
-          ${r._read.understating?'<span class="tag t-und">understating</span>':''}
+          ${r.compliance_deadline_hours ? `<div class="f"><span>deadline</span><span>${r.compliance_deadline_hours}h</span></div>` : ''}
+          ${r._read.injection ? '<span class="tag t-inj">injection attempt</span>' : ''}
+          ${r._read.understating ? '<span class="tag t-und">understating</span>' : ''}
+          <div style="margin-top:6px">${confTag}</div>
         </div>
         <div class="half h-sim">
-          <h4>${attr(i) ? 'instruments simulated · billing real'
-                        : 'simulated instruments — B, C, D'}</h4>
-          <div class="f"><span>tier / ARR${attr(i)?' <b style="color:var(--ok)">real</b>':''}</span>
+          <h4>${attr(r) ? 'instruments simulated · billing real'
+            : 'simulated instruments — B, C, D'}</h4>
+          <div class="f"><span>tier / ARR${attr(r) ? ' <b style="color:var(--ok)">real</b>' : ''}</span>
             <span>${esc(r.tier)} · ${money(r.arr)}</span></div>
           <div class="f"><span>users hit</span><span>${r.users_affected}</span></div>
           <div class="f"><span>error rate</span><span>${n2(r.error_rate)}</span></div>
           <div class="f"><span>GMV/h</span><span>${money(r.gmv_at_risk_per_hour)}</span></div>
           <div class="f"><span>waited</span><span>${r.waited_hours}h · ${r.times_skipped} skips</span></div>
-          ${r.security_exposure?'<span class="tag t-inj">exposure confirmed</span>':''}
-          ${r.data_loss?'<span class="tag t-inj">data loss</span>':''}
+          ${r.security_exposure ? '<span class="tag t-inj">exposure confirmed</span>' : ''}
+          ${r.data_loss ? '<span class="tag t-inj">data loss</span>' : ''}
         </div>
       </div>
-    </div>`).join('');
+    </div>`;
+      }).join('');
 
-  return `<div class="sec"><h3>What was read, and what was invented</h3>
-    <div class="banner ${usedLLM?'info':''}" style="margin-bottom:11px">
-      <b>${usedLLM?'Read by the model.':'No API key.'}</b> ${esc(note)}
+      return `<div class="sec"><h3>What was read, and what was invented</h3>
+    <div class="banner ${usedLLM ? 'info' : ''}" style="margin-bottom:11px">
+      <b>${usedLLM ? 'Read by the model.' : 'No API key.'}</b> ${esc(note)}
     </div>
     ${cards}
     <p class="note"><b>The two halves are not the same kind of thing.</b> The left is
@@ -333,177 +887,149 @@ function renderRead(rows, note, usedLLM, ordering){
       That separation is the point rather than a caveat: the demo's centrepiece is a
       merchant saying <i>“no rush”</i> while telemetry reports a confirmed exposure.
       Derive the instruments from the ticket text and that contradiction cannot exist —
-      the understatement would simply win.</p></div>`;
-}
+      the understatement would simply win.</p>
+    ${teleConf.length ? `<p class="note" style="margin-top:9px"><b>Telemetry confirmation:</b>
+      One of the ${teleConf.length} submitted inputs was randomly assigned as a
+      <span class="tag t-fp">✗ FALSE POSITIVE</span> — meaning telemetry could not
+      corroborate that ticket's claim. The rest are <span class="tag t-conf">✓ CONFIRMED</span>.
+      This assignment is linked to <b>textbox positions</b>, not ticket IDs.</p>` : ''}
+    </div>`;
+    }
 
-/* ── posture matrix ────────────────────────────────────────────────── */
-function renderMatrix(os){
-  const names = Object.keys(os);
-  const depth = Math.max(...names.map(n=>os[n].ranked.length));
-  const distinct = new Set(names.map(n=>os[n].ranked.map(r=>r.ticket_id).join('>'))).size;
-  let body='';
-  for(let i=0;i<depth;i++){
-    body += `<tr><td class="rk">${i+1}</td>` + names.map(n=>{
-      const r=os[n].ranked[i]; if(!r) return '<td></td>';
-      const c = r.charter_promoted?'c-ch':r.served?'c-ok':'c-no';
-      return `<td><span class="cell ${c}">${esc(r.ticket_id)}${r.charter_promoted?' ⚖':''}</span></td>`;
-    }).join('')+'</tr>';
-  }
-  return `<div class="sec"><h3>Same evidence, six sets of values</h3>
-    <div class="mx"><table><thead><tr><th>#</th>${names.map(n=>`<th>${esc(n)}</th>`).join('')}</tr></thead>
+    /* ── posture matrix ────────────────────────────────────────────────── */
+    function renderMatrix(os) {
+      const names = Object.keys(os);
+      const depth = Math.max(...names.map(n => os[n].ranked.length));
+      const distinct = new Set(names.map(n => os[n].ranked.map(r => r.ticket_id).join('>'))).size;
+      let body = '';
+      for (let i = 0; i < depth; i++) {
+        body += `<tr><td class="rk">${i + 1}</td>` + names.map(n => {
+          const r = os[n].ranked[i]; if (!r) return '<td></td>';
+          const c = r.charter_promoted ? 'c-ch' : r.served ? 'c-ok' : 'c-no';
+          return `<td><span class="cell ${c}">${esc(r.ticket_id)}${r.charter_promoted ? ' ⚖' : ''}</span></td>`;
+        }).join('') + '</tr>';
+      }
+      return `<div class="sec"><h3>Same evidence, six sets of values</h3>
+    <div class="mx"><table><thead><tr><th>#</th>${names.map(n => `<th>${esc(n)}</th>`).join('')}</tr></thead>
     <tbody>${body}</tbody></table></div>
     <p class="note"><b>${distinct} distinct orderings from 6 postures.</b> Green = served,
       dim = deferred, purple = charter override. Nothing about the evidence changed
       between these columns — only the declared weights did.</p></div>`;
-}
+    }
 
-function renderConflicts(cs){
-  if(!cs.length) return '';
-  return `<div class="sec"><h3>Contradictions between sources — ${cs.length}</h3>
-    ${cs.map(c=>`<div class="cf"><div class="t">${esc(c.ticket_id)} · ${esc(c.severity_of_conflict)}</div>
+    function renderConflicts(cs) {
+      if (!cs.length) return '';
+      return `<div class="sec"><h3>Contradictions between sources — ${cs.length}</h3>
+    ${cs.map(c => `<div class="cf"><div class="t">${esc(c.ticket_id)} · ${esc(c.severity_of_conflict)}</div>
       <div class="c"><b>${esc(c.source_a)}</b> — ${esc(c.claim_a)}</div>
       <div class="c"><b>${esc(c.source_b)}</b> — ${esc(c.claim_b)}</div>
       <div class="r">trusts <b>${esc(c.trusted)}</b>: ${esc(c.reasoning)}</div></div>`).join('')}</div>`;
-}
+    }
 
-/* ── run ───────────────────────────────────────────────────────────── */
-async function run(){
-  $('#err').innerHTML='';
-  const texts = TEXT.map((t,i)=>({message:t, customer_id:FROM[i]||''}))
-                    .filter(t=>t.message.trim());
-  if(!texts.length){ $('#err').innerHTML=`<div class="err">Write at least one ticket.</div>`; return; }
-  $('#go').disabled = true;
-  $('#out').innerHTML = `<div class="empty">Reading the tickets, then scoring…</div>`;
-  try{
-    const res = await fetch('/api/triage',{method:'POST',headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({capacity:+$('#capacity').value, posture:$('#posture').value,
-                            autofill:true, tickets:texts})});
-    const d = await res.json();
-    if(d.error){ $('#err').innerHTML=`<div class="err">${esc(d.error)}</div>`; $('#out').innerHTML=''; return; }
-    LAST=d;
-    const o = d.orderings[$('#posture').value];
-    $('#out').innerHTML = renderOrdering(o,d.capacity)
-      + renderRead(d.resolved, d.autofill_note, d.autofill_used_llm, o)
-      + renderMatrix(d.orderings) + renderConflicts(d.conflicts);
-  } finally { $('#go').disabled = false; }
-}
+    /* ── run ───────────────────────────────────────────────────────────── */
+    async function run() {
+      $('#err').innerHTML = '';
+      const texts = TEXT.map((t, i) => ({
+        message: t, customer_id: FROM[i] || '',
+        // Only sent when checked -- unchecked means "not manually asserted", not
+        // "confirmed absent". The server must not let false override the simulation.
+        ...(EXPO[i] ? { security_exposure: true } : {}),
+      })).filter(t => t.message.trim());
+      if (!texts.length) { $('#err').innerHTML = `<div class="err">Write at least one ticket.</div>`; return; }
+      $('#go').disabled = true;
+      $('#out').innerHTML = `<div class="empty">Reading the tickets, then scoring…</div>`;
+      try {
+        const res = await fetch('/api/triage', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            capacity: +$('#capacity').value, posture: $('#posture').value,
+            autofill: true, tickets: texts
+          })
+        });
+        const d = await res.json();
+        if (d.error) { $('#err').innerHTML = `<div class="err">${esc(d.error)}</div>`; $('#out').innerHTML = ''; return; }
+        LAST = d;
+        const o = d.orderings[$('#posture').value];
+        $('#out').innerHTML = renderOrdering(o, d.capacity)
+          + renderRead(d.resolved, d.autofill_note, d.autofill_used_llm, o, d.telemetry_confirmed)
+          + renderMatrix(d.orderings) + renderConflicts(d.conflicts);
+      } finally { $('#go').disabled = false; }
+    }
 
-/* ── other tabs ────────────────────────────────────────────────────── */
-async function loadShipped(){
-  const d = await (await fetch('/api/shipped')).json();
-  const a = d.audit;
-  const tierRows = Object.entries(a?.tiers||{}).map(([t,v])=>`<tr><td>${esc(t)}</td>
-    <td class="mono">${n2(v.median_wait_hours)}h</td><td class="mono">${n2(v.worst_wait_hours)}h</td>
-    <td class="mono">${v.served}</td><td class="mono">${v.deferred}</td></tr>`).join('');
-  const audit = !a?'':`<div class="sec"><h3>Audit across the sequence — ${a.decisions??'?'} decisions</h3>
-    <table><thead><tr><th>tier</th><th>median wait</th><th>worst</th><th>served</th><th>deferred</th></tr></thead>
-    <tbody>${tierRows}</tbody></table>
-    ${(a.warnings||[]).map(w=>`<div class="banner" style="margin-top:9px">${esc(w)}</div>`).join('')}
-    <p class="note">The audit reports the system's own failures. A run that only
-      describes the ways it succeeded is not an audit.</p></div>`;
-  const e = d.eval;
-  const rec = e&&e.planted ? Math.round(e.matched/e.planted*100) : 0;
-  const ev = !e?'':`<div class="sec"><h3>Conflict detection, measured</h3>
-    <dl class="kv"><dt>planted</dt><dd>${e.planted}</dd><dt>detected</dt><dd>${e.detected}</dd>
-      <dt>matched</dt><dd style="color:var(--acc)">${e.matched} / ${e.planted} — ${rec}% recall</dd>
-      <dt>detector</dt><dd>${esc(e.detector??'')}</dd></dl>
-    <p class="note">The only honest use of the word <i>recall</i> here: we cannot know the
-      right ranking, but we do know which contradictions we authored.</p></div>`;
-  const bs = d.batches.map(b=>{
-    const rows=b.ordering.ranked.map(r=>`<tr class="${r.served?'':'deferred'}">
-      <td class="rk">${r.rank}</td><td class="mono">${esc(r.ticket_id)}</td>
-      <td>${esc(r.customer_id??'')}</td><td class="mono">${n2(r.score)}</td>
-      <td>${r.served?'<span class="pill p-ok">served</span>':'<span class="pill p-no">deferred</span>'}
-        ${r.charter_promoted?' <span class="pill p-ch">⚖</span>':''}</td></tr>`).join('');
-    const ov=(b.ordering.overrides||[]).map(v=>`<div class="ov">
-      <div class="h">${esc(v.rule_id)}/${esc(v.clause_id)} · ${esc(v.ticket_id)} · rank ${v.from_rank} → ${v.to_rank}</div>
-      <div class="d">${esc(v.detail)}</div></div>`).join('');
-    return `<div class="sec"><h3>Batch ${b.batch_id} — ${esc(b.label)}</h3>
-      <p class="note" style="margin:0 0 8px">posture <b>${esc(b.posture)}</b> ·
-        ${(b.conflicts||[]).length} contradictions</p>
-      <table><thead><tr><th>#</th><th>ticket</th><th>merchant</th><th>score</th><th>outcome</th></tr></thead>
-      <tbody>${rows}</tbody></table>${ov}</div>`;
-  }).join('');
-  $('#ship').innerHTML = audit + ev + bs;
-}
+    /* ── other tabs ────────────────────────────────────────────────────── */
+    const PLAIN = {
+      R1: {
+        title: 'A confirmed leak is never “cosmetic”, and never waits',
+        means: 'If the platform has actually measured data crossing a boundary it should not have crossed, that ticket gets worked on today. It does not matter who reported it, what they pay, or how calmly they described it.',
+        fires: 'Telemetry confirms a security exposure or data loss — measured, not merely alleged in the message.',
+        then: 'Two things. It must outrank every cosmetic ticket, and it must land inside today’s served set.',
+        why: 'A confirmed exposure that nobody works on today is, from the outside, indistinguishable from one nobody noticed. Deferring it is not triage, it is a decision to leave it open.',
+        example: 'A free-tier shop paying $0 writes “probably just a display glitch, no rush.” Telemetry says 340 shops’ partial card numbers were visible. Under revenue-first that ticket scores 5th of 6 and would be dropped. This rule drags it back in.',
+      },
+      R2: {
+        title: 'Nobody waits longer than five days',
+        means: 'Once a ticket has sat for five days it gets served in the next round, whatever tier the customer is on and whatever strategy is running.',
+        fires: 'A ticket has been waiting 120 hours or more.',
+        then: 'It must be served this batch.',
+        why: 'A queue that never reaches its back end is not a queue, it is a filter. Fairness is not visible in any single decision — it only exists across a series of them, which is why this is the one rule that reads the history ledger.',
+        example: 'Verdant Home was passed over six times across 128 hours. On the third batch this rule fires and they are served, even though revenue-first still scores them fifth.',
+      },
+      R3: {
+        title: 'Legal deadlines are constraints, not priorities',
+        means: 'A statutory clock — a GDPR erasure request, say — is not weighed against revenue. It is simply met.',
+        fires: 'A legal or compliance deadline falls within 48 hours.',
+        then: 'The ticket must be served, and its severity is floored at 0.95 so it cannot be scored as minor.',
+        why: 'Priorities are things you trade off. Deadlines are things you miss or do not. Treating a regulator’s clock as one input among several is how organisations end up explaining a breach after the fact.',
+        example: 'An erasure request due in 6 hours from a mid-tier account outranks a $480k enterprise complaint, under every strategy.',
+      },
+      R4: {
+        title: 'A bad track record can dampen a claim, never erase it',
+        means: 'If someone has cried wolf before, the system discounts what they <i>say</i> — but only down to 30%, and it never discounts what the instruments <i>measured</i>.',
+        fires: 'Always. This one is a bound on the arithmetic rather than a promotion.',
+        then: 'The credibility multiplier is held between 0.30 and 1.00.',
+        why: 'Two failures to avoid. Without a floor, a poor history multiplies a real emergency to nearly zero — the boy who cried wolf still eventually meets the wolf. And because severity takes the <i>larger</i> of claim and evidence, a measurement is never reduced by who reported it. Credibility only ever breaks ties between claims nothing else supports.',
+        example: 'NorthPeak has had 2 of 9 urgency claims confirmed — credibility 0.27, clamped up to 0.30. Their “CRITICAL” carries 30% weight. But when telemetry corroborates them, the discount stops applying entirely.',
+      },
+    };
 
-/* Plain-English gloss per rule. Keyed by id, and every field is optional: if the
-   charter grows a rule this map has not caught up with, that rule still renders from
-   its own YAML statement rather than vanishing from the page. A UI that silently
-   omits a rule the engine is enforcing is worse than one that looks unfinished. */
-const PLAIN = {
-  R1: {
-    title: 'A confirmed leak is never “cosmetic”, and never waits',
-    means: 'If the platform has actually measured data crossing a boundary it should not have crossed, that ticket gets worked on today. It does not matter who reported it, what they pay, or how calmly they described it.',
-    fires: 'Telemetry confirms a security exposure or data loss — measured, not merely alleged in the message.',
-    then: 'Two things. It must outrank every cosmetic ticket, and it must land inside today’s served set.',
-    why: 'A confirmed exposure that nobody works on today is, from the outside, indistinguishable from one nobody noticed. Deferring it is not triage, it is a decision to leave it open.',
-    example: 'A free-tier shop paying $0 writes “probably just a display glitch, no rush.” Telemetry says 340 shops’ partial card numbers were visible. Under revenue-first that ticket scores 5th of 6 and would be dropped. This rule drags it back in.',
-  },
-  R2: {
-    title: 'Nobody waits longer than five days',
-    means: 'Once a ticket has sat for five days it gets served in the next round, whatever tier the customer is on and whatever strategy is running.',
-    fires: 'A ticket has been waiting 120 hours or more.',
-    then: 'It must be served this batch.',
-    why: 'A queue that never reaches its back end is not a queue, it is a filter. Fairness is not visible in any single decision — it only exists across a series of them, which is why this is the one rule that reads the history ledger.',
-    example: 'Verdant Home was passed over six times across 128 hours. On the third batch this rule fires and they are served, even though revenue-first still scores them fifth.',
-  },
-  R3: {
-    title: 'Legal deadlines are constraints, not priorities',
-    means: 'A statutory clock — a GDPR erasure request, say — is not weighed against revenue. It is simply met.',
-    fires: 'A legal or compliance deadline falls within 48 hours.',
-    then: 'The ticket must be served, and its severity is floored at 0.95 so it cannot be scored as minor.',
-    why: 'Priorities are things you trade off. Deadlines are things you miss or do not. Treating a regulator’s clock as one input among several is how organisations end up explaining a breach after the fact.',
-    example: 'An erasure request due in 6 hours from a mid-tier account outranks a $480k enterprise complaint, under every strategy.',
-  },
-  R4: {
-    title: 'A bad track record can dampen a claim, never erase it',
-    means: 'If someone has cried wolf before, the system discounts what they <i>say</i> — but only down to 30%, and it never discounts what the instruments <i>measured</i>.',
-    fires: 'Always. This one is a bound on the arithmetic rather than a promotion.',
-    then: 'The credibility multiplier is held between 0.30 and 1.00.',
-    why: 'Two failures to avoid. Without a floor, a poor history multiplies a real emergency to nearly zero — the boy who cried wolf still eventually meets the wolf. And because severity takes the <i>larger</i> of claim and evidence, a measurement is never reduced by who reported it. Credibility only ever breaks ties between claims nothing else supports.',
-    example: 'NorthPeak has had 2 of 9 urgency claims confirmed — credibility 0.27, clamped up to 0.30. Their “CRITICAL” carries 30% weight. But when telemetry corroborates them, the discount stops applying entirely.',
-  },
-};
+    /* JSON conditions, said out loud. */
+    function floorWhen(w) {
+      if (!w) return 'always';
+      if (w.telemetry_flag === 'security_exposure') return 'telemetry confirms an exposure';
+      if (w.telemetry_flag === 'data_loss') return 'telemetry confirms data loss';
+      if (w.telemetry_flag) return `telemetry flags ${esc(String(w.telemetry_flag).replace(/_/g, ' '))}`;
+      if (w.category) return `filed under “${esc(w.category)}”`;
+      if (w.compliance_deadline_hours_lte != null) return `statutory deadline within ${w.compliance_deadline_hours_lte}h`;
+      return esc(JSON.stringify(w));
+    }
 
-/* JSON conditions, said out loud. */
-function floorWhen(w){
-  if(!w) return 'always';
-  if(w.telemetry_flag === 'security_exposure') return 'telemetry confirms an exposure';
-  if(w.telemetry_flag === 'data_loss')         return 'telemetry confirms data loss';
-  if(w.telemetry_flag)                         return `telemetry flags ${esc(String(w.telemetry_flag).replace(/_/g,' '))}`;
-  if(w.category)                               return `filed under “${esc(w.category)}”`;
-  if(w.compliance_deadline_hours_lte != null)  return `statutory deadline within ${w.compliance_deadline_hours_lte}h`;
-  return esc(JSON.stringify(w));
-}
+    function loadCharter() {
+      const c = META.charter;
 
-function loadCharter(){
-  const c = META.charter;
-
-  const rules = (c.rules||[]).map(r=>{
-    const p = PLAIN[r.id] || {};
-    const row = (k,v) => v ? `<div class="cr"><span>${k}</span><div>${v}</div></div>` : '';
-    return `<div class="rule">
+      const rules = (c.rules || []).map(r => {
+        const p = PLAIN[r.id] || {};
+        const row = (k, v) => v ? `<div class="cr"><span>${k}</span><div>${v}</div></div>` : '';
+        return `<div class="rule">
       <div class="rh"><span class="rid">${esc(r.id)}</span>
-        ${esc(p.title || (r.name||'').replace(/_/g,' '))}</div>
+        ${esc(p.title || (r.name || '').replace(/_/g, ' '))}</div>
       ${p.means ? `<p class="rm">${p.means}</p>` : ''}
       ${row('fires when', p.fires ? esc(p.fires) : '')}
-      ${row('then',       p.then  ? esc(p.then)  : '')}
-      ${row('why',        p.why   ? p.why        : '')}
+      ${row('then', p.then ? esc(p.then) : '')}
+      ${row('why', p.why ? p.why : '')}
       ${p.example ? `<div class="rex"><b>For example</b> — ${p.example}</div>` : ''}
       <details><summary>the rule as written in config/charter.yaml</summary>
-        <div class="s" style="margin-top:6px">“${esc((r.statement||'').replace(/\s+/g,' '))}”</div>
-        <div class="note" style="margin-top:5px">${(r.clauses||[]).map(cl=>
-          `<span class="mono">${esc(cl.id)}</span> ${esc((cl.kind||'').replace(/_/g,' '))}`).join(' · ')}</div>
+        <div class="s" style="margin-top:6px">“${esc((r.statement || '').replace(/\s+/g, ' '))}”</div>
+        <div class="note" style="margin-top:5px">${(r.clauses || []).map(cl =>
+          `<span class="mono">${esc(cl.id)}</span> ${esc((cl.kind || '').replace(/_/g, ' '))}`).join(' · ')}</div>
       </details></div>`;
-  }).join('');
+      }).join('');
 
-  const floors = (c.severity_floors||[]).map(f=>`<tr>
+      const floors = (c.severity_floors || []).map(f => `<tr>
     <td>${floorWhen(f.when)}</td>
     <td class="mono" style="color:var(--acc);white-space:nowrap">≥ ${n2(f.floor)}</td>
-    <td class="why" style="margin:0">${esc(f.reason||'')}</td></tr>`).join('');
+    <td class="why" style="margin:0">${esc(f.reason || '')}</td></tr>`).join('');
 
-  $('#chart').innerHTML = `
+      $('#chart').innerHTML = `
     <div class="sec" style="max-width:76ch">
       <h3>What the charter is</h3>
       <p>Six strategies decide how this system weighs revenue against fairness against
@@ -528,34 +1054,43 @@ function loadCharter(){
         users were counted. Reach is the wrong measure of a leak.</p>
       <table><thead><tr><th>when</th><th>severity is at least</th><th>because</th></tr></thead>
       <tbody>${floors}</tbody></table></div>`;
-}
+    }
 
-/* ── boot ──────────────────────────────────────────────────────────── */
-(async function(){
-  META = await (await fetch('/api/meta')).json();
-  $('#posture').innerHTML = Object.keys(META.postures).sort()
-    .map(n=>`<option ${n==='revenue_first'?'selected':''}>${n}</option>`).join('');
-  $('#keybanner').innerHTML = META.llm_available
-    ? `<div class="banner info"><b>Model reading enabled.</b> Tickets are read by
+    /* ── boot ──────────────────────────────────────────────────────────── */
+    (async function () {
+      META = await (await fetch('/api/meta')).json();
+      $('#posture').innerHTML = Object.keys(META.postures).sort()
+        .map(n => `<option ${n === 'revenue_first' ? 'selected' : ''}>${n}</option>`).join('');
+      $('#keybanner').innerHTML = META.llm_available
+        ? `<div class="banner info"><b>Model reading enabled.</b> Tickets are read by
        ${esc(META.model)}; the ranking itself stays deterministic.</div>`
-    : `<div class="banner"><b>No API key.</b> Tickets are read by keyword heuristics,
+        : `<div class="banner"><b>No API key.</b> Tickets are read by keyword heuristics,
        which are cruder and miss anything not spelled out literally. Add
        <code>ANTHROPIC_API_KEY</code> to <code>.env</code> for the model path. The
        ranking is deterministic either way.</div>`;
-  drawTickets(); loadCharter();
-  loadShipped().catch(()=>$('#ship').innerHTML=
-    `<div class="empty">No committed reports. Run <code>python scripts/run_demo.py</code>.</div>`);
+      drawTickets(); loadCharter();
 
-  $('#go').onclick  = run;
-  $('#ex1').onclick = () => { TEXT = [...EXAMPLE]; FROM = ['','','','','']; drawTickets(); run(); };
-  $('#clr').onclick = () => { TEXT=['','','','','']; FROM=['','','','','']; drawTickets();
-                              $('#out').innerHTML=`<div class="empty">Cleared.</div>`; };
-  $('#posture').onchange = () => { if(LAST) run(); };
-  $$('.tab').forEach(t=>t.onclick=()=>{
-    $$('.tab').forEach(x=>x.classList.remove('on')); t.classList.add('on');
-    $$('.pane').forEach(p=>p.classList.remove('on')); $('#'+t.dataset.pane).classList.add('on');
-  });
-})();
-</script>
+      $('#go').onclick = run;
+      $('#ex1').onclick = () => {
+        TEXT = [...EXAMPLE]; FROM = ['', '', '', '', ''];
+        // The second example is the "no rush" / confirmed cross-tenant exposure
+        // case -- the whole point of this checkbox is to demonstrate the contradiction
+        // between a calm claim and a measured fact.
+        EXPO = [false, true, false, false, false];
+        drawTickets(); run();
+      };
+      $('#clr').onclick = () => {
+        TEXT = ['', '', '', '', '']; FROM = ['', '', '', '', '']; EXPO = [false, false, false, false, false];
+        drawTickets();
+        $('#out').innerHTML = `<div class="empty">Cleared.</div>`;
+      };
+      $('#posture').onchange = () => { if (LAST) run(); };
+      $$('.tab').forEach(t => t.onclick = () => {
+        $$('.tab').forEach(x => x.classList.remove('on')); t.classList.add('on');
+        $$('.pane').forEach(p => p.classList.remove('on')); $('#' + t.dataset.pane).classList.add('on');
+      });
+    })();
+  </script>
 </body>
+
 </html>
