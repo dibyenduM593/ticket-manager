@@ -12,8 +12,12 @@ does not exist. Every number this server returns comes from importing and callin
 the same `src/triage/` code the CLI calls -- `estimation`, `valuation`, `scorer`,
 `charter` -- so the page cannot show a ranking the CLI would not produce.
 
-The LLM stages are never invoked here. This serves the deterministic floor only,
-and the front end says so rather than letting you assume otherwise.
+WHERE THE LLM DOES AND DOES NOT ACT: the page takes plain ticket text, so something
+has to turn that into four sources. `web/autofill.py` does, using the model when a
+key is present and keyword heuristics when it is not. That step is READING ONLY --
+it never touches the ranking. Scoring, the charter and the ordering stay entirely
+deterministic, and the page renders which half of each ticket was read from the text
+and which half was invented, because those are not the same kind of claim.
 """
 
 from __future__ import annotations
@@ -40,6 +44,10 @@ from triage.models import (  # noqa: E402
 from triage.pipeline import Context, detect_conflicts_deterministic  # noqa: E402
 from triage.sources import SourceBundle  # noqa: E402
 from triage.state import State  # noqa: E402
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from autofill import autofill  # noqa: E402
+from triage.llm.client import LLMClient  # noqa: E402
 
 WEB = Path(__file__).resolve().parent
 AS_OF = datetime(2026, 8, 19, 14, 0, tzinfo=timezone.utc)
@@ -156,6 +164,17 @@ def _build_context(payload: dict) -> tuple[Context, list[str]]:
 
 
 def _run(payload: dict) -> dict:
+    #: The page now sends raw text and nothing else. Reading it into four sources is
+    #: a separate, clearly-labelled step -- see web/autofill.py for why the claimed
+    #: half and the simulated half must not be confused.
+    fill_note, used_llm = None, False
+    if payload.get("autofill"):
+        texts = [t.get("message", "") for t in payload.get("tickets", [])[:5]]
+        rows, fill_note, used_llm = autofill(texts)
+        if not rows:
+            raise ValueError("write at least one ticket")
+        payload = {**payload, "tickets": rows}
+
     ctx, notes = _build_context(payload)
     requested = payload.get("posture") or "revenue_first"
 
@@ -164,16 +183,20 @@ def _run(payload: dict) -> dict:
     est_by_id = {e.ticket_id: e for e in estimates}
     conflicts = detect_conflicts_deterministic(estimates)
 
+    crm_names = {cid: rec.name for cid, rec in ctx.sources.crm.items()}
     orderings: dict[str, dict] = {}
     for name, posture in sorted(load_postures().items()):
         scored = scorer.score_tickets(estimates, posture, clusters, ctx.charter)
         ordering = scorer.rank(scored, posture, ctx.capacity, ctx.charter)
-        orderings[name] = _ordering_json(ordering, est_by_id)
+        orderings[name] = _ordering_json(ordering, est_by_id, crm_names)
 
     return {
         "posture": requested,
         "capacity": ctx.capacity,
         "orderings": orderings,
+        "resolved": payload.get("tickets", []),
+        "autofill_note": fill_note,
+        "autofill_used_llm": used_llm,
         "postures": {n: p.model_dump() for n, p in sorted(load_postures().items())},
         "conflicts": [c.model_dump() for c in conflicts],
         "clusters": [c.model_dump() for c in clusters],
@@ -186,7 +209,8 @@ def _run(payload: dict) -> dict:
     }
 
 
-def _ordering_json(ordering, est_by_id) -> dict:
+def _ordering_json(ordering, est_by_id, names: dict[str, str] | None = None) -> dict:
+    names = names or {}
     rows = []
     for r in ordering.ranked:
         est = est_by_id[r.ticket_id]
@@ -196,6 +220,7 @@ def _ordering_json(ordering, est_by_id) -> dict:
                 "rank": r.rank,
                 "ticket_id": r.ticket_id,
                 "merchant": r.scored.estimate.customer_id,
+                "merchant_name": names.get(r.scored.estimate.customer_id, r.scored.estimate.customer_id),
                 "score": round(r.score, 4),
                 "served": r.served,
                 "charter_promoted": r.charter_promoted,
@@ -272,8 +297,11 @@ class Handler(BaseHTTPRequestHandler):
         if self.path in ("/", "/index.html"):
             return self._file(WEB / "index.html", "text/html; charset=utf-8")
         if self.path == "/api/meta":
+            client = LLMClient()
             return self._json(
                 {
+                    "llm_available": client.available,
+                    "model": client.model,
                     "categories": CATEGORIES,
                     "postures": {n: p.model_dump() for n, p in sorted(load_postures().items())},
                     "charter": load_charter(),

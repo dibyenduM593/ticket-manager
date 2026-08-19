@@ -13,14 +13,13 @@
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);
-       font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
-  a{color:var(--acc)}
+       font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
   h1,h2,h3{margin:0;font-weight:600;letter-spacing:-.01em}
 
-  header{padding:20px 24px;border-bottom:1px solid var(--line);background:var(--panel)}
+  header{padding:18px 24px;border-bottom:1px solid var(--line);background:var(--panel)}
   header h1{font-size:17px}
-  header p{margin:6px 0 0;color:var(--dim);font-size:13px;max-width:76ch}
-  header code{font-family:var(--mono);color:var(--acc);font-size:12px}
+  header p{margin:5px 0 0;color:var(--dim);font-size:13px;max-width:78ch}
+  code{font-family:var(--mono);color:var(--acc);font-size:12px}
 
   .tabs{display:flex;gap:2px;padding:0 24px;background:var(--panel);
         border-bottom:1px solid var(--line)}
@@ -29,50 +28,46 @@
   .tab:hover{color:var(--ink)}
   .tab.on{color:var(--ink);border-bottom-color:var(--acc)}
 
-  .wrap{display:grid;grid-template-columns:minmax(340px,420px) 1fr;gap:0;
-        align-items:start}
-  @media(max-width:1000px){.wrap{grid-template-columns:1fr}}
-  .left{border-right:1px solid var(--line);padding:16px;min-height:calc(100vh - 118px)}
+  .wrap{display:grid;grid-template-columns:minmax(320px,400px) 1fr}
+  @media(max-width:980px){.wrap{grid-template-columns:1fr}}
+  .left{border-right:1px solid var(--line);padding:16px;min-height:calc(100vh - 114px)}
   .right{padding:16px;min-width:0}
 
   .banner{margin:0 0 14px;padding:9px 12px;border-radius:6px;font-size:12px;
           background:rgba(210,153,34,.1);border:1px solid rgba(210,153,34,.35);color:#e3b341}
   .banner b{color:#f0c674}
+  .banner.info{background:rgba(88,166,255,.08);border-color:rgba(88,166,255,.3);color:#a5cdff}
+  .banner.info b{color:var(--acc)}
 
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;
-        padding:12px;margin-bottom:10px}
-  .card.on{border-color:#3d444d}
-  .cardhead{display:flex;align-items:center;gap:8px;margin-bottom:8px}
-  .num{width:20px;height:20px;border-radius:5px;background:var(--panel2);
-       border:1px solid var(--line);display:grid;place-items:center;
-       font:600 11px var(--mono);color:var(--dim);flex:none}
-  .cardhead input.merch{flex:1;min-width:0}
+  .tk{display:flex;gap:9px;margin-bottom:9px;align-items:flex-start}
+  .num{width:22px;height:22px;border-radius:6px;background:var(--panel2);
+       border:1px solid var(--line);display:grid;place-items:center;flex:none;
+       font:600 11px var(--mono);color:var(--faint);margin-top:5px}
+  textarea{font-family:inherit;font-size:13px;color:var(--ink);background:var(--panel);
+    border:1px solid var(--line);border-radius:8px;padding:9px 11px;width:100%;
+    resize:vertical;min-height:56px;line-height:1.5}
+  textarea:focus{outline:0;border-color:var(--acc);background:var(--panel2)}
+  textarea::placeholder{color:var(--faint)}
 
   label{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.06em;
-        color:var(--faint);margin-bottom:3px}
-  input,select,textarea,button{font-family:inherit;font-size:13px;color:var(--ink);
-        background:var(--panel2);border:1px solid var(--line);border-radius:6px;
-        padding:6px 8px;width:100%}
-  input:focus,select:focus,textarea:focus{outline:0;border-color:var(--acc)}
-  textarea{resize:vertical;min-height:52px;line-height:1.45}
-  input[type=number]{font-family:var(--mono)}
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
-  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px}
-  .flags{display:flex;gap:14px;margin-top:8px;flex-wrap:wrap}
-  .flag{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--dim);
-        cursor:pointer;width:auto}
-  .flag input{width:auto;margin:0}
-
+        color:var(--faint);margin-bottom:4px}
+  select,input,button{font-family:inherit;font-size:13px;color:var(--ink);
+    background:var(--panel2);border:1px solid var(--line);border-radius:6px;
+    padding:7px 9px;width:100%}
+  select:focus,input:focus{outline:0;border-color:var(--acc)}
+  .grid{display:grid;grid-template-columns:1fr 110px;gap:9px;margin:14px 0 12px}
   .btn{background:var(--acc);border-color:var(--acc);color:#08121f;font-weight:600;
-       cursor:pointer;padding:9px}
+       cursor:pointer;padding:10px}
   .btn:hover{filter:brightness(1.1)}
-  .btn.ghost{background:var(--panel2);color:var(--ink);border-color:var(--line);font-weight:500}
+  .btn:disabled{opacity:.55;cursor:default;filter:none}
+  .btn.ghost{background:var(--panel2);color:var(--dim);border-color:var(--line);
+             font-weight:500;padding:7px}
   .btn.ghost:hover{border-color:var(--acc);color:var(--acc);filter:none}
-  .row{display:flex;gap:7px;margin-bottom:10px}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:9px}
 
-  .sec{margin-bottom:18px}
+  .sec{margin-bottom:20px}
   .sec>h3{font-size:12px;text-transform:uppercase;letter-spacing:.07em;
-          color:var(--faint);margin-bottom:8px;font-weight:600}
+          color:var(--faint);margin-bottom:9px;font-weight:600}
 
   table{width:100%;border-collapse:collapse;font-size:13px}
   th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.06em;
@@ -82,13 +77,13 @@
   .mono{font-family:var(--mono);font-size:12px}
   .rk{font:600 13px var(--mono);color:var(--dim)}
   .pill{display:inline-block;padding:1px 6px;border-radius:20px;font-size:10px;
-        font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+        font-weight:600;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
   .p-ok{background:rgba(63,185,80,.15);color:var(--ok)}
   .p-no{background:rgba(139,148,158,.15);color:var(--dim)}
   .p-ch{background:rgba(188,140,255,.16);color:var(--charter)}
   .why{color:var(--dim);font-size:12px;line-height:1.45;margin-top:3px}
   .bar{height:3px;background:var(--panel2);border-radius:2px;overflow:hidden;
-       margin-top:5px;max-width:110px}
+       margin-top:5px;max-width:100px}
   .bar i{display:block;height:100%;background:var(--acc)}
 
   .ov{background:rgba(188,140,255,.07);border:1px solid rgba(188,140,255,.3);
@@ -97,6 +92,28 @@
   .ov .s{color:var(--dim);font-size:12px;font-style:italic;margin-bottom:5px}
   .ov .d{font-size:12px}
 
+  /* what the reader saw */
+  .rd{border:1px solid var(--line);border-radius:8px;margin-bottom:9px;overflow:hidden}
+  .rd .msg{padding:9px 11px;background:var(--panel);font-size:12.5px;
+           border-bottom:1px solid var(--line);color:var(--ink)}
+  .rd .msg .tid{font:600 11px var(--mono);color:var(--faint);margin-right:7px}
+  .halves{display:grid;grid-template-columns:1fr 1fr}
+  @media(max-width:640px){.halves{grid-template-columns:1fr}}
+  .half{padding:9px 11px}
+  .half+.half{border-left:1px solid var(--line)}
+  .half h4{margin:0 0 6px;font-size:10px;text-transform:uppercase;letter-spacing:.06em;
+           font-weight:600}
+  .h-read h4{color:var(--acc)}
+  .h-sim h4{color:var(--warn)}
+  .f{display:flex;justify-content:space-between;gap:10px;font-size:12px;
+     padding:1.5px 0}
+  .f span:first-child{color:var(--faint)}
+  .f span:last-child{font-family:var(--mono);text-align:right}
+  .tag{display:inline-block;padding:1px 5px;border-radius:4px;font-size:10px;
+       font-weight:600;margin-right:4px;margin-top:5px}
+  .t-inj{background:rgba(248,81,73,.15);color:var(--bad)}
+  .t-und{background:rgba(210,153,34,.15);color:var(--warn)}
+
   .cf{border-left:2px solid var(--warn);padding:7px 0 7px 11px;margin-bottom:9px;font-size:12px}
   .cf .t{font:600 12px var(--mono);color:var(--warn)}
   .cf .c{color:var(--dim);margin-top:3px}
@@ -104,15 +121,15 @@
   .cf .r{margin-top:4px}
 
   .mx{overflow-x:auto}
-  .mx table{min-width:640px}
+  .mx table{min-width:620px}
   .mx td{padding:6px 8px;font-family:var(--mono);font-size:12px}
   .cell{padding:3px 6px;border-radius:4px;display:block}
   .c-ok{background:rgba(63,185,80,.12);color:#56d364}
-  .c-no{background:transparent;color:var(--faint)}
+  .c-no{color:var(--faint)}
   .c-ch{background:rgba(188,140,255,.15);color:var(--charter);font-weight:600}
 
-  .note{color:var(--faint);font-size:11.5px;line-height:1.5;margin-top:8px}
-  .empty{color:var(--faint);text-align:center;padding:56px 20px;font-size:13px}
+  .note{color:var(--faint);font-size:11.5px;line-height:1.55;margin-top:9px}
+  .empty{color:var(--faint);text-align:center;padding:60px 20px;font-size:13px}
   .err{background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.4);
        color:#ff7b72;padding:10px 12px;border-radius:6px;font-size:12px;
        font-family:var(--mono);margin-bottom:12px;white-space:pre-wrap}
@@ -121,75 +138,56 @@
   .kv dd{margin:0;font-family:var(--mono)}
   .pane{display:none}.pane.on{display:block}
   .full{padding:16px 24px}
-  details{margin-top:7px}
-  summary{cursor:pointer;color:var(--faint);font-size:11px;list-style:none}
-  summary::-webkit-details-marker{display:none}
-  summary:hover{color:var(--acc)}
-  .rules{font-size:12px;color:var(--dim)}
-  .rules li{margin-bottom:7px}
+  .rules li{margin-bottom:12px}
 </style>
 </head>
 <body>
 
 <header>
   <h1>Conflicting-signal ticket triage</h1>
-  <p>Type up to five tickets. Every number below is computed by importing the real
-     <code>src/triage/</code> modules — the same code the CLI runs. Nothing is
-     reimplemented in JavaScript, so this page cannot show you a ranking
-     <code>triage run</code> would not produce.</p>
+  <p>Write up to five tickets in plain English. Everything else is read for you.
+     The ranking comes from importing the real <code>src/triage/</code> modules —
+     the same code <code>triage run</code> calls — so this page cannot show you an
+     ordering the CLI would not produce.</p>
 </header>
 
 <nav class="tabs">
-  <button class="tab on" data-pane="try">Try it — 5 tickets</button>
+  <button class="tab on" data-pane="try">Try it</button>
   <button class="tab" data-pane="ship">The shipped demo</button>
   <button class="tab" data-pane="chart">The charter</button>
 </nav>
 
-<!-- ══════════════════════════════════════════════════ TRY IT -->
 <div class="pane on" id="try">
 <div class="wrap">
   <div class="left">
-    <div class="banner">
-      <b>Deterministic path only.</b> No API key is attached, so conflict detection
-      uses the rule-based fallback (9 of 21 planted conflicts on the shipped data)
-      and the LLM critique, adjudication and narration stages do not run.
+    <div id="keybanner"></div>
+
+    <div id="tickets"></div>
+
+    <div class="grid">
+      <div><label>Posture — the values dial</label><select id="posture"></select></div>
+      <div><label>Capacity</label><input type="number" id="capacity" value="3" min="0" max="5"></div>
     </div>
 
-    <div class="row">
-      <button class="btn ghost" id="ex1">Load the conflict example</button>
+    <button class="btn" id="go">Triage these tickets</button>
+    <div class="row2">
+      <button class="btn ghost" id="ex1">Load an example</button>
       <button class="btn ghost" id="clr">Clear</button>
     </div>
 
-    <div class="grid" style="margin-bottom:12px">
-      <div>
-        <label>Posture — the values dial</label>
-        <select id="posture"></select>
-      </div>
-      <div>
-        <label>Capacity (agents)</label>
-        <input type="number" id="capacity" value="3" min="0" max="5">
-      </div>
-    </div>
-
-    <div id="cards"></div>
-    <button class="btn" id="go">Triage these tickets</button>
-    <p class="note">Capacity is what makes this a decision rather than a list:
-       tickets past the line are deferred, and only deferred tickets accrue
-       fairness debt.</p>
+    <p class="note">Capacity is what makes this a decision rather than a list.
+      Tickets past the line are deferred — and only deferred tickets accrue
+      fairness debt.</p>
   </div>
 
   <div class="right">
     <div id="err"></div>
-    <div id="out"><div class="empty">Enter a ticket or load the example, then
-      press <b>Triage these tickets</b>.</div></div>
+    <div id="out"><div class="empty">Write a ticket, or load an example.</div></div>
   </div>
 </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════ SHIPPED -->
 <div class="pane full" id="ship"><div class="empty">Loading committed reports…</div></div>
-
-<!-- ══════════════════════════════════════════════════ CHARTER -->
 <div class="pane full" id="chart"><div class="empty">Loading charter…</div></div>
 
 <script>
@@ -198,289 +196,206 @@ const $$ = s => [...document.querySelectorAll(s)];
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c =>
   ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const n2 = x => Number(x).toFixed(2);
-const money = x => x >= 1000 ? '$' + Math.round(x/1000) + 'k' : '$' + Math.round(x);
+const money = x => !x ? '$0' : x >= 1000 ? '$'+Math.round(x/1000)+'k' : '$'+Math.round(x);
 
-let META = null, LAST = null;
+let META=null, LAST=null;
+let TEXT = ['','','','',''];
 
-/* ── the five ticket cards ─────────────────────────────────────────── */
-const BLANK = {merchant:'',message:'',category:'integration_api',stated_urgency:'medium',
-  tier:'growth',arr:50000,users_affected:0,error_rate:0,gmv_at_risk_per_hour:0,
-  waited_hours:1,times_skipped:0,security_exposure:false,data_loss:false,
-  blocks_paying_workflow:false,compliance_deadline_hours:''};
-
-/* The four planted contradictions the README names, as an editable starting point.
-   Each one is a case where the sources disagree and no weighting settles it. */
 const EXAMPLE = [
-  {...BLANK, merchant:'NorthPeak', message:"Checkout is completely down. We are losing thousands a minute. CRITICAL.",
-   category:'checkout_failure', stated_urgency:'critical', tier:'enterprise', arr:480000,
-   users_affected:1240, error_rate:.68, gmv_at_risk_per_hour:8400, waited_hours:2},
-  {...BLANK, merchant:'Bloom & Vine', message:"Payments failing intermittently during our flash sale.",
-   category:'checkout_failure', stated_urgency:'high', tier:'growth', arr:36000,
-   users_affected:610, error_rate:.52, gmv_at_risk_per_hour:11200, waited_hours:3},
-  {...BLANK, merchant:'Solo Artisan', message:"Seeing another shop's order data on my dashboard. Probably just a display glitch on my end, no rush at all.",
-   category:'security', stated_urgency:'low', tier:'free', arr:0,
-   users_affected:340, error_rate:.02, security_exposure:true, waited_hours:5},
-  {...BLANK, merchant:'Verdant Home', message:"Following up again on my integration issue. This is the seventh time I have asked.",
-   category:'integration_api', stated_urgency:'medium', tier:'growth', arr:52000,
-   users_affected:24, error_rate:.11, waited_hours:128, times_skipped:6},
-  {...BLANK, merchant:'Kite & Copper', message:"URGENT!!! The checkout button is the wrong shade of blue on mobile!!!",
-   category:'ui_cosmetic', stated_urgency:'critical', tier:'enterprise', arr:300000,
-   users_affected:0, waited_hours:6},
+  "Checkout is completely down for us. We are losing thousands a minute. This is CRITICAL, please escalate immediately.",
+  "Hi — I noticed I can see another shop's order details on my dashboard, including partial card numbers. It's probably just a display glitch on my end though, no rush at all.",
+  "Following up on my integration issue again. This is the seventh time I have asked and it has been over 128 hours now.",
+  "URGENT!!! The checkout button is the wrong shade of blue on mobile!!! Our brand guidelines are very clear about this!!!",
+  "Payments intermittently failing during our flash sale — about half of attempts. We're a small shop but this is our biggest day of the year.",
 ];
 
-let ROWS = Array.from({length:5}, () => ({...BLANK}));
-
-function drawCards(){
-  $('#cards').innerHTML = ROWS.map((r,i) => `
-    <div class="card ${r.message?'on':''}">
-      <div class="cardhead">
-        <span class="num">${i+1}</span>
-        <input class="merch" data-i="${i}" data-k="merchant" placeholder="merchant name"
-               value="${esc(r.merchant)}">
-      </div>
-      <textarea data-i="${i}" data-k="message"
-        placeholder="What the merchant wrote — the subjective, inflatable source">${esc(r.message)}</textarea>
-      <div class="grid3" style="margin-top:7px">
-        <div><label>category</label><select data-i="${i}" data-k="category">
-          ${META.categories.map(c=>`<option ${c===r.category?'selected':''}>${c}</option>`).join('')}
-        </select></div>
-        <div><label>they say</label><select data-i="${i}" data-k="stated_urgency">
-          ${META.urgencies.map(u=>`<option ${u===r.stated_urgency?'selected':''}>${u}</option>`).join('')}
-        </select></div>
-        <div><label>tier</label><select data-i="${i}" data-k="tier">
-          ${META.tiers.map(t=>`<option ${t===r.tier?'selected':''}>${t}</option>`).join('')}
-        </select></div>
-      </div>
-      <div class="grid3" style="margin-top:7px">
-        <div><label>ARR $</label><input type="number" data-i="${i}" data-k="arr" value="${r.arr}"></div>
-        <div><label>users hit</label><input type="number" data-i="${i}" data-k="users_affected" value="${r.users_affected}"></div>
-        <div><label>error rate</label><input type="number" step="0.01" min="0" max="1" data-i="${i}" data-k="error_rate" value="${r.error_rate}"></div>
-      </div>
-      <div class="grid3" style="margin-top:7px">
-        <div><label>GMV/h risk</label><input type="number" data-i="${i}" data-k="gmv_at_risk_per_hour" value="${r.gmv_at_risk_per_hour}"></div>
-        <div><label>waited h</label><input type="number" data-i="${i}" data-k="waited_hours" value="${r.waited_hours}"></div>
-        <div><label>skipped</label><input type="number" data-i="${i}" data-k="times_skipped" value="${r.times_skipped}"></div>
-      </div>
-      <div class="flags">
-        <label class="flag"><input type="checkbox" data-i="${i}" data-k="security_exposure"
-          ${r.security_exposure?'checked':''}> telemetry confirms exposure</label>
-        <label class="flag"><input type="checkbox" data-i="${i}" data-k="data_loss"
-          ${r.data_loss?'checked':''}> data loss</label>
-      </div>
-      <details><summary>+ compliance deadline</summary>
-        <div style="margin-top:6px"><label>statutory deadline in N hours (blank = none)</label>
-        <input type="number" data-i="${i}" data-k="compliance_deadline_hours"
-               value="${r.compliance_deadline_hours}" placeholder="e.g. 18"></div>
-      </details>
+function drawTickets(){
+  $('#tickets').innerHTML = TEXT.map((t,i)=>`
+    <div class="tk"><span class="num">${i+1}</span>
+      <textarea data-i="${i}" rows="2"
+        placeholder="${i===0?'What did the merchant write?':'…'}">${esc(t)}</textarea>
     </div>`).join('');
-
-  $$('#cards [data-i]').forEach(el => {
-    el.addEventListener(el.type==='checkbox'||el.tagName==='SELECT'?'change':'input', e => {
-      const {i,k} = e.target.dataset;
-      ROWS[i][k] = e.target.type==='checkbox' ? e.target.checked : e.target.value;
-      if (k==='message') e.target.closest('.card').classList.toggle('on', !!e.target.value);
-    });
+  $$('#tickets textarea').forEach(el=>{
+    el.addEventListener('input', e => TEXT[e.target.dataset.i] = e.target.value);
   });
 }
 
-/* ── render one ordering ───────────────────────────────────────────── */
-function renderOrdering(o, capacity){
-  const rows = o.ranked.map(r => `
+/* ── ranking ───────────────────────────────────────────────────────── */
+function renderOrdering(o, cap){
+  const rows = o.ranked.map(r=>`
     <tr class="${r.served?'':'deferred'}">
       <td class="rk">${r.rank}</td>
-      <td>
-        <div><b>${esc(r.facts.tier)}</b> <span class="mono" style="color:var(--faint)">
-          ${esc(r.ticket_id)}</span></div>
-        <div class="why">${esc(r.why)}</div>
-      </td>
-      <td class="mono">${n2(r.score)}
-        <div class="bar"><i style="width:${Math.round(r.score*100)}%"></i></div></td>
+      <td><div><b>${esc(r.merchant_name||r.ticket_id)}</b>
+          <span class="mono" style="color:var(--faint)">${esc(r.ticket_id)}</span></div>
+        <div class="why">${esc(r.why)}</div></td>
+      <td class="mono">${n2(r.score)}<div class="bar"><i style="width:${Math.round(r.score*100)}%"></i></div></td>
       <td>${r.served?'<span class="pill p-ok">served</span>':'<span class="pill p-no">deferred</span>'}
-        ${r.charter_promoted?' <span class="pill p-ch">⚖ charter</span>':''}</td>
+        ${r.charter_promoted?'<br><span class="pill p-ch">⚖ charter</span>':''}</td>
     </tr>`).join('');
-
-  const ovs = o.overrides.map(v => `
-    <div class="ov">
-      <div class="h">${esc(v.rule_id)}/${esc(v.clause_id)} · ${esc(v.ticket_id)} · rank ${v.from_rank} → ${v.to_rank}</div>
-      <div class="s">“${esc(v.statement)}”</div>
-      <div class="d">${esc(v.detail)}</div>
-    </div>`).join('');
-
-  return `
-    <div class="sec">
-      <h3>Ranking — capacity ${capacity}, so ranks 1–${capacity} are served</h3>
+  const ovs = o.overrides.map(v=>`
+    <div class="ov"><div class="h">${esc(v.rule_id)}/${esc(v.clause_id)} · ${esc(v.ticket_id)} · rank ${v.from_rank} → ${v.to_rank}</div>
+      <div class="s">“${esc(v.statement)}”</div><div class="d">${esc(v.detail)}</div></div>`).join('');
+  return `<div class="sec"><h3>Ranking — capacity ${cap}, so ranks 1–${cap} are served</h3>
       <table><thead><tr><th>#</th><th>ticket &amp; why</th><th>score</th><th>outcome</th></tr></thead>
-      <tbody>${rows}</tbody></table>
-    </div>
-    ${ovs ? `<div class="sec"><h3>Charter overrides — where the posture was refused</h3>${ovs}
+      <tbody>${rows}</tbody></table></div>
+    ${ovs?`<div class="sec"><h3>Charter overrides — where the posture was refused</h3>${ovs}
       <p class="note">Promotion is <b>minimal</b>: a protected ticket moves to the lowest
       rank that satisfies the rule, never to the top. The charter is a floor, not a
-      preference — it has no opinion about what should be first, only about what
-      cannot be last.</p></div>` : ''}`;
+      preference — no opinion about what should be first, only about what cannot be
+      last.</p></div>`:''}`;
 }
 
-/* ── the six-posture matrix ────────────────────────────────────────── */
-function renderMatrix(orderings){
-  const names = Object.keys(orderings);
-  const depth = Math.max(...names.map(n => orderings[n].ranked.length));
-  const sig = n => orderings[n].ranked.map(r=>r.ticket_id).join('>');
-  const distinct = new Set(names.map(sig)).size;
+/* ── what was read vs what was simulated ───────────────────────────── */
+function renderRead(rows, note, usedLLM){
+  const cards = rows.map((r,i)=>`
+    <div class="rd">
+      <div class="msg"><span class="tid">TKT-U${i+1}</span>${esc(r.message)}</div>
+      <div class="halves">
+        <div class="half h-read">
+          <h4>read from the text — source A</h4>
+          <div class="f"><span>merchant</span><span>${esc(r.merchant)}</span></div>
+          <div class="f"><span>category</span><span>${esc(r.category)}</span></div>
+          <div class="f"><span>they say</span><span>${esc(r.stated_urgency)}</span></div>
+          <div class="f"><span>intensity</span><span>${n2(r._read.intensity)}</span></div>
+          ${r.compliance_deadline_hours?`<div class="f"><span>deadline</span><span>${r.compliance_deadline_hours}h</span></div>`:''}
+          ${r._read.injection?'<span class="tag t-inj">injection attempt</span>':''}
+          ${r._read.understating?'<span class="tag t-und">understating</span>':''}
+        </div>
+        <div class="half h-sim">
+          <h4>simulated instruments — B, C, D</h4>
+          <div class="f"><span>tier / ARR</span><span>${esc(r.tier)} · ${money(r.arr)}</span></div>
+          <div class="f"><span>users hit</span><span>${r.users_affected}</span></div>
+          <div class="f"><span>error rate</span><span>${n2(r.error_rate)}</span></div>
+          <div class="f"><span>GMV/h</span><span>${money(r.gmv_at_risk_per_hour)}</span></div>
+          <div class="f"><span>waited</span><span>${r.waited_hours}h · ${r.times_skipped} skips</span></div>
+          ${r.security_exposure?'<span class="tag t-inj">exposure confirmed</span>':''}
+          ${r.data_loss?'<span class="tag t-inj">data loss</span>':''}
+        </div>
+      </div>
+    </div>`).join('');
 
-  let body = '';
-  for (let i=0;i<depth;i++){
+  return `<div class="sec"><h3>What was read, and what was invented</h3>
+    <div class="banner ${usedLLM?'info':''}" style="margin-bottom:11px">
+      <b>${usedLLM?'Read by the model.':'No API key.'}</b> ${esc(note)}
+    </div>
+    ${cards}
+    <p class="note"><b>The two halves are not the same kind of thing.</b> The left is
+      genuinely read from what the merchant wrote — that is source A, and reading it
+      is what a language model is for here. The right is <b>invented</b>, because you
+      invented the merchant and no instruments are attached to it. In a real run those
+      come from <code>telemetry.json</code>, <code>crm.json</code> and the ledger, which
+      no model writes to.<br><br>
+      That separation is the point rather than a caveat: the demo's centrepiece is a
+      merchant saying <i>“no rush”</i> while telemetry reports a confirmed exposure.
+      Derive the instruments from the ticket text and that contradiction cannot exist —
+      the understatement would simply win.</p></div>`;
+}
+
+/* ── posture matrix ────────────────────────────────────────────────── */
+function renderMatrix(os){
+  const names = Object.keys(os);
+  const depth = Math.max(...names.map(n=>os[n].ranked.length));
+  const distinct = new Set(names.map(n=>os[n].ranked.map(r=>r.ticket_id).join('>'))).size;
+  let body='';
+  for(let i=0;i<depth;i++){
     body += `<tr><td class="rk">${i+1}</td>` + names.map(n=>{
-      const r = orderings[n].ranked[i];
-      if(!r) return '<td></td>';
-      const cls = r.charter_promoted ? 'c-ch' : r.served ? 'c-ok' : 'c-no';
-      return `<td><span class="cell ${cls}">${esc(r.ticket_id)}${r.charter_promoted?' ⚖':''}</span></td>`;
-    }).join('') + '</tr>';
+      const r=os[n].ranked[i]; if(!r) return '<td></td>';
+      const c = r.charter_promoted?'c-ch':r.served?'c-ok':'c-no';
+      return `<td><span class="cell ${c}">${esc(r.ticket_id)}${r.charter_promoted?' ⚖':''}</span></td>`;
+    }).join('')+'</tr>';
   }
   return `<div class="sec"><h3>Same evidence, six sets of values</h3>
-    <div class="mx"><table><thead><tr><th>#</th>
-      ${names.map(n=>`<th>${esc(n)}</th>`).join('')}</tr></thead>
-      <tbody>${body}</tbody></table></div>
-    <p class="note"><b>${distinct} distinct orderings from 6 postures.</b>
-      Green = served, dim = deferred, purple = charter override. Nothing about the
-      evidence changed between these columns — only the declared weights did.
-      That is the whole argument: the disagreement is not about arithmetic.</p></div>`;
+    <div class="mx"><table><thead><tr><th>#</th>${names.map(n=>`<th>${esc(n)}</th>`).join('')}</tr></thead>
+    <tbody>${body}</tbody></table></div>
+    <p class="note"><b>${distinct} distinct orderings from 6 postures.</b> Green = served,
+      dim = deferred, purple = charter override. Nothing about the evidence changed
+      between these columns — only the declared weights did.</p></div>`;
 }
 
-/* ── conflicts ─────────────────────────────────────────────────────── */
 function renderConflicts(cs){
-  if(!cs.length) return `<div class="sec"><h3>Contradictions</h3>
-    <p class="note">The rule-based detector found none between these tickets.
-    It finds contradictions that are arithmetic; it misses the ones that need two
-    sources held in mind at once.</p></div>`;
+  if(!cs.length) return '';
   return `<div class="sec"><h3>Contradictions between sources — ${cs.length}</h3>
-    ${cs.map(c=>`<div class="cf">
-      <div class="t">${esc(c.ticket_id)} · ${esc(c.severity_of_conflict)}</div>
+    ${cs.map(c=>`<div class="cf"><div class="t">${esc(c.ticket_id)} · ${esc(c.severity_of_conflict)}</div>
       <div class="c"><b>${esc(c.source_a)}</b> — ${esc(c.claim_a)}</div>
       <div class="c"><b>${esc(c.source_b)}</b> — ${esc(c.claim_b)}</div>
-      <div class="r">trusts <b>${esc(c.trusted)}</b>: ${esc(c.reasoning)}</div>
-    </div>`).join('')}</div>`;
-}
-
-/* ── severity breakdown for the top ticket ─────────────────────────── */
-function renderSeverity(o){
-  const r = o.ranked[0]; if(!r) return '';
-  const drv = r.charter_floor >= r.observed && r.charter_floor >= r.claimed ? 'the charter floor'
-            : r.observed >= r.claimed ? 'the observed' : 'the claim';
-  return `<div class="sec"><h3>How rank 1 got its severity</h3>
-    <dl class="kv">
-      <dt>claimed</dt><dd>${n2(r.claimed)} — what they said × credibility ${n2(r.facts.credibility)}</dd>
-      <dt>observed</dt><dd>${n2(r.observed)} — measured reach, category base rate</dd>
-      <dt>charter floor</dt><dd>${n2(r.charter_floor)}</dd>
-      <dt>severity</dt><dd style="color:var(--acc)">${n2(r.severity)} = max(…) — driven by ${drv}</dd>
-    </dl>
-    <p class="note"><b>max</b>, not average. It guarantees severity ≥ observed: a
-      measurement is never diluted by the reputation of whoever reported it. Under
-      averaging, a blast radius measured at 0.94 scores 0.62 because of who filed it.</p></div>`;
+      <div class="r">trusts <b>${esc(c.trusted)}</b>: ${esc(c.reasoning)}</div></div>`).join('')}</div>`;
 }
 
 /* ── run ───────────────────────────────────────────────────────────── */
 async function run(){
-  $('#err').innerHTML = '';
-  const body = {
-    capacity: +$('#capacity').value,
-    posture:  $('#posture').value,
-    tickets:  ROWS.filter(r => r.message.trim()),
-  };
-  if(!body.tickets.length){
-    $('#err').innerHTML = `<div class="err">Write a message in at least one ticket.</div>`;
-    return;
-  }
-  $('#out').innerHTML = `<div class="empty">Scoring…</div>`;
-  const res = await fetch('/api/triage', {method:'POST',
-    headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
-  const d = await res.json();
-  if(d.error){
-    $('#err').innerHTML = `<div class="err">${esc(d.error)}</div>`;
-    $('#out').innerHTML = ''; return;
-  }
-  LAST = d;
-  const o = d.orderings[body.posture];
-  $('#out').innerHTML =
-      renderOrdering(o, d.capacity)
-    + renderMatrix(d.orderings)
-    + renderSeverity(o)
-    + renderConflicts(d.conflicts)
-    + `<p class="note">${d.notes.map(esc).join('<br>')}</p>`;
+  $('#err').innerHTML='';
+  const texts = TEXT.map(t=>({message:t})).filter(t=>t.message.trim());
+  if(!texts.length){ $('#err').innerHTML=`<div class="err">Write at least one ticket.</div>`; return; }
+  $('#go').disabled = true;
+  $('#out').innerHTML = `<div class="empty">Reading the tickets, then scoring…</div>`;
+  try{
+    const res = await fetch('/api/triage',{method:'POST',headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({capacity:+$('#capacity').value, posture:$('#posture').value,
+                            autofill:true, tickets:texts})});
+    const d = await res.json();
+    if(d.error){ $('#err').innerHTML=`<div class="err">${esc(d.error)}</div>`; $('#out').innerHTML=''; return; }
+    LAST=d;
+    const o = d.orderings[$('#posture').value];
+    $('#out').innerHTML = renderOrdering(o,d.capacity)
+      + renderRead(d.resolved, d.autofill_note, d.autofill_used_llm)
+      + renderMatrix(d.orderings) + renderConflicts(d.conflicts);
+  } finally { $('#go').disabled = false; }
 }
 
-/* ── shipped demo tab ──────────────────────────────────────────────── */
+/* ── other tabs ────────────────────────────────────────────────────── */
 async function loadShipped(){
   const d = await (await fetch('/api/shipped')).json();
-  const bs = d.batches.map(b => {
-    const rows = b.ordering.ranked.map(r=>`
-      <tr class="${r.served?'':'deferred'}">
-        <td class="rk">${r.rank}</td><td class="mono">${esc(r.ticket_id)}</td>
-        <td>${esc(r.customer_id ?? '')}</td>
-        <td class="mono">${n2(r.score)}</td>
-        <td>${r.served?'<span class="pill p-ok">served</span>':'<span class="pill p-no">deferred</span>'}
-            ${r.charter_promoted?' <span class="pill p-ch">⚖</span>':''}</td>
-      </tr>`).join('');
-    const ov = (b.ordering.overrides||[]).map(v=>`<div class="ov">
-        <div class="h">${esc(v.rule_id)}/${esc(v.clause_id)} · ${esc(v.ticket_id)} · rank ${v.from_rank} → ${v.to_rank}</div>
-        <div class="d">${esc(v.detail)}</div></div>`).join('');
-    return `<div class="sec">
-      <h3>Batch ${b.batch_id} — ${esc(b.label)}</h3>
-      <p class="note" style="margin:0 0 8px">posture <b>${esc(b.posture)}</b>
-         (${esc(b.posture_chosen_by)}) · ${(b.conflicts||[]).length} contradictions</p>
-      <table><thead><tr><th>#</th><th>ticket</th><th>merchant</th><th>score</th><th>outcome</th></tr></thead>
-        <tbody>${rows}</tbody></table>${ov}</div>`;
-  }).join('');
-
   const a = d.audit;
-  // tiers is an object keyed by tier name, not an array
-  const tierRows = Object.entries(a?.tiers || {}).map(([tier,t])=>`<tr><td>${esc(tier)}</td>
-      <td class="mono">${n2(t.median_wait_hours)}h</td><td class="mono">${n2(t.worst_wait_hours)}h</td>
-      <td class="mono">${t.served}</td><td class="mono">${t.deferred}</td></tr>`).join('');
-  const audit = !a ? '' : `<div class="sec"><h3>Audit across the sequence — ${a.decisions ?? '?'} decisions</h3>
+  const tierRows = Object.entries(a?.tiers||{}).map(([t,v])=>`<tr><td>${esc(t)}</td>
+    <td class="mono">${n2(v.median_wait_hours)}h</td><td class="mono">${n2(v.worst_wait_hours)}h</td>
+    <td class="mono">${v.served}</td><td class="mono">${v.deferred}</td></tr>`).join('');
+  const audit = !a?'':`<div class="sec"><h3>Audit across the sequence — ${a.decisions??'?'} decisions</h3>
     <table><thead><tr><th>tier</th><th>median wait</th><th>worst</th><th>served</th><th>deferred</th></tr></thead>
     <tbody>${tierRows}</tbody></table>
     ${(a.warnings||[]).map(w=>`<div class="banner" style="margin-top:9px">${esc(w)}</div>`).join('')}
     <p class="note">The audit reports the system's own failures. A run that only
-       describes the ways it succeeded is not an audit.</p></div>`;
-
+      describes the ways it succeeded is not an audit.</p></div>`;
   const e = d.eval;
-  const rec = e && e.planted ? Math.round(e.matched / e.planted * 100) : 0;
-  const ev = !e ? '' : `<div class="sec"><h3>Conflict detection, measured</h3>
-    <dl class="kv"><dt>planted</dt><dd>${e.planted}</dd>
-      <dt>detected</dt><dd>${e.detected}</dd>
+  const rec = e&&e.planted ? Math.round(e.matched/e.planted*100) : 0;
+  const ev = !e?'':`<div class="sec"><h3>Conflict detection, measured</h3>
+    <dl class="kv"><dt>planted</dt><dd>${e.planted}</dd><dt>detected</dt><dd>${e.detected}</dd>
       <dt>matched</dt><dd style="color:var(--acc)">${e.matched} / ${e.planted} — ${rec}% recall</dd>
-      <dt>exact source pair</dt><dd>${e.matched_exact ?? '—'}</dd>
-      <dt>detector</dt><dd>${esc(e.detector ?? '')}</dd></dl>
-    <p class="note">The only honest use of the word <i>recall</i> here: we cannot know
-      the right ranking, but we do know which contradictions we authored. The
-      rule-based detector finds the arithmetic ones and misses the ones needing two
-      sources at once — that gap is the argument for the LLM stage, stated as a
-      number rather than a paragraph.</p></div>`;
-
+      <dt>detector</dt><dd>${esc(e.detector??'')}</dd></dl>
+    <p class="note">The only honest use of the word <i>recall</i> here: we cannot know the
+      right ranking, but we do know which contradictions we authored.</p></div>`;
+  const bs = d.batches.map(b=>{
+    const rows=b.ordering.ranked.map(r=>`<tr class="${r.served?'':'deferred'}">
+      <td class="rk">${r.rank}</td><td class="mono">${esc(r.ticket_id)}</td>
+      <td>${esc(r.customer_id??'')}</td><td class="mono">${n2(r.score)}</td>
+      <td>${r.served?'<span class="pill p-ok">served</span>':'<span class="pill p-no">deferred</span>'}
+        ${r.charter_promoted?' <span class="pill p-ch">⚖</span>':''}</td></tr>`).join('');
+    const ov=(b.ordering.overrides||[]).map(v=>`<div class="ov">
+      <div class="h">${esc(v.rule_id)}/${esc(v.clause_id)} · ${esc(v.ticket_id)} · rank ${v.from_rank} → ${v.to_rank}</div>
+      <div class="d">${esc(v.detail)}</div></div>`).join('');
+    return `<div class="sec"><h3>Batch ${b.batch_id} — ${esc(b.label)}</h3>
+      <p class="note" style="margin:0 0 8px">posture <b>${esc(b.posture)}</b> ·
+        ${(b.conflicts||[]).length} contradictions</p>
+      <table><thead><tr><th>#</th><th>ticket</th><th>merchant</th><th>score</th><th>outcome</th></tr></thead>
+      <tbody>${rows}</tbody></table>${ov}</div>`;
+  }).join('');
   $('#ship').innerHTML = audit + ev + bs;
 }
 
-/* ── charter tab ───────────────────────────────────────────────────── */
 function loadCharter(){
   const c = META.charter;
-  const rules = (c.rules||[]).map(r=>`<li style="margin-bottom:14px">
-    <div class="ov"><div class="h">${esc(r.id)} — ${esc(r.name)}</div>
-    <div class="s">“${esc((r.statement||'').replace(/\s+/g,' '))}”</div>
-    <div class="d">${(r.clauses||[]).map(cl=>
-      `<div style="margin-top:5px">· <span class="mono">${esc(cl.id)}</span>
-       <span style="color:var(--faint)">${esc(cl.kind)}</span></div>`).join('')}</div>
-    </div></li>`).join('');
-  const floors = (c.severity_floors||[]).map(f=>`<tr>
-    <td class="mono">${n2(f.floor)}</td><td>${esc(JSON.stringify(f.when))}</td>
+  const rules=(c.rules||[]).map(r=>`<li><div class="ov">
+    <div class="h">${esc(r.id)} — ${esc(r.name)}</div>
+    <div class="s">“${esc((r.statement||'').replace(/\s+/g,' '))}”</div></div></li>`).join('');
+  const floors=(c.severity_floors||[]).map(f=>`<tr><td class="mono">${n2(f.floor)}</td>
+    <td class="mono" style="font-size:11px">${esc(JSON.stringify(f.when))}</td>
     <td class="why" style="margin:0">${esc(f.reason||'')}</td></tr>`).join('');
-  $('#chart').innerHTML = `
-    <div class="sec"><h3>Non-negotiable rules — no posture can tune these</h3>
+  $('#chart').innerHTML=`<div class="sec"><h3>Non-negotiable rules — no posture can tune these</h3>
       <ul class="rules" style="list-style:none;padding:0">${rules}</ul></div>
     <div class="sec"><h3>Severity floors</h3>
-      <table><thead><tr><th>floor</th><th>when</th><th>why</th></tr></thead>
-      <tbody>${floors}</tbody></table>
-      <p class="note">This is the one place the declared side reaches into an
-        estimate, and it is deliberate: a confirmed exposure is severe by
-        declaration regardless of how small its measured blast radius is.</p></div>`;
+      <table><thead><tr><th>floor</th><th>when</th><th>why</th></tr></thead><tbody>${floors}</tbody></table>
+      <p class="note">The one place the declared side reaches into an estimate, and it is
+        deliberate: a confirmed exposure is severe by declaration regardless of how small
+        its measured blast radius is.</p></div>`;
 }
 
 /* ── boot ──────────────────────────────────────────────────────────── */
@@ -488,20 +403,25 @@ function loadCharter(){
   META = await (await fetch('/api/meta')).json();
   $('#posture').innerHTML = Object.keys(META.postures).sort()
     .map(n=>`<option ${n==='revenue_first'?'selected':''}>${n}</option>`).join('');
-  drawCards();
-  loadCharter();
-  loadShipped().catch(()=> $('#ship').innerHTML =
-    `<div class="empty">No committed reports found. Run <code>python scripts/run_demo.py</code> first.</div>`);
+  $('#keybanner').innerHTML = META.llm_available
+    ? `<div class="banner info"><b>Model reading enabled.</b> Tickets are read by
+       ${esc(META.model)}; the ranking itself stays deterministic.</div>`
+    : `<div class="banner"><b>No API key.</b> Tickets are read by keyword heuristics,
+       which are cruder and miss anything not spelled out literally. Add
+       <code>ANTHROPIC_API_KEY</code> to <code>.env</code> for the model path. The
+       ranking is deterministic either way.</div>`;
+  drawTickets(); loadCharter();
+  loadShipped().catch(()=>$('#ship').innerHTML=
+    `<div class="empty">No committed reports. Run <code>python scripts/run_demo.py</code>.</div>`);
 
   $('#go').onclick  = run;
-  $('#ex1').onclick = () => { ROWS = EXAMPLE.map(r=>({...r})); drawCards(); run(); };
-  $('#clr').onclick = () => { ROWS = Array.from({length:5},()=>({...BLANK})); drawCards();
-    $('#out').innerHTML = `<div class="empty">Cleared.</div>`; };
+  $('#ex1').onclick = () => { TEXT = [...EXAMPLE]; drawTickets(); run(); };
+  $('#clr').onclick = () => { TEXT=['','','','','']; drawTickets();
+                              $('#out').innerHTML=`<div class="empty">Cleared.</div>`; };
   $('#posture').onchange = () => { if(LAST) run(); };
-  $$('.tab').forEach(t => t.onclick = () => {
+  $$('.tab').forEach(t=>t.onclick=()=>{
     $$('.tab').forEach(x=>x.classList.remove('on')); t.classList.add('on');
-    $$('.pane').forEach(p=>p.classList.remove('on'));
-    $('#'+t.dataset.pane).classList.add('on');
+    $$('.pane').forEach(p=>p.classList.remove('on')); $('#'+t.dataset.pane).classList.add('on');
   });
 })();
 </script>

@@ -70,8 +70,22 @@ conflict detection, posture advice, four adversarial critics, and adjudication.
 python web/server.py
 ```
 
-Then open <http://localhost:8000>. Type up to five tickets, set the capacity, and
-watch the ranking, the charter overrides, and all six postures side by side.
+Then open <http://localhost:8000>. Write up to five tickets in plain English — the
+page reads them into structured fields for you — and watch the ranking, the charter
+overrides, and all six postures side by side.
+
+**What reads the tickets, and what does not.** Turning free text into four sources is
+a reading step, done by the model when a key is present and by keyword heuristics when
+it is not. It never touches the ranking: scoring, the charter and the ordering stay
+deterministic. And the page splits every ticket into what was *read* and what was
+*invented*, because those are not the same kind of claim. Category and stated urgency
+are genuinely read from the words — that is source A. Tier, ARR, users affected, error
+rate, exposure and waiting time are **simulated**, because you invented the merchant
+and no instruments are attached to it; a real run reads those from `telemetry.json`,
+`crm.json` and the ledger, which no model writes to. That separation is load-bearing
+rather than pedantic: the demo's centrepiece is a merchant saying *"no rush"* while
+telemetry reports a confirmed exposure, and deriving the instruments from the ticket
+text would make that contradiction impossible to express.
 
 Two deliberate constraints. It is **stdlib only** — no Flask, no FastAPI, nothing to
 install — because a front end that needs `pip install` would undercut the zero-setup
@@ -81,8 +95,10 @@ free to silently disagree with the first, and then the page is demonstrating a s
 that does not exist. Every number on screen came out of the same code `triage run`
 calls, so the page cannot show a ranking the CLI would not produce.
 
-The LLM stages never run there. It serves the deterministic floor, and says so in a
-banner rather than letting you assume otherwise.
+The triage pipeline's own LLM stages — conflict detection, posture advice, the four
+critics, adjudication — never run there. Reading the tickets is the only place a model
+acts, and the page carries a banner saying which path produced what you are looking at
+rather than letting you assume.
 
 ### Every command
 
