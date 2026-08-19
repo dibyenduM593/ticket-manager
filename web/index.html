@@ -140,6 +140,25 @@
   .pane{display:none}.pane.on{display:block}
   .full{padding:16px 24px}
   .rules li{margin-bottom:12px}
+
+  /* plain-English charter */
+  #chart p{margin:0;color:var(--dim);font-size:13px}
+  #chart p b{color:var(--ink)}
+  .rule{border:1px solid var(--line);border-left:2px solid var(--charter);
+        border-radius:8px;padding:13px 15px;margin-bottom:11px;max-width:84ch}
+  .rh{font-size:14px;font-weight:600;margin-bottom:7px;display:flex;gap:9px;
+      align-items:baseline;line-height:1.4}
+  .rid{font:600 10px var(--mono);color:var(--charter);background:rgba(188,140,255,.13);
+       padding:2px 6px;border-radius:4px;flex:none}
+  .rm{color:var(--ink)!important;font-size:13px;margin:0 0 10px!important}
+  .cr{display:grid;grid-template-columns:88px 1fr;gap:11px;font-size:12.5px;
+      padding:3px 0;align-items:baseline}
+  .cr>span{color:var(--faint);font-size:10px;text-transform:uppercase;
+           letter-spacing:.06em;padding-top:2px}
+  .cr>div{color:var(--dim)}
+  .rex{margin-top:10px;padding:8px 11px;background:var(--panel);border-radius:6px;
+       font-size:12.5px;color:var(--dim);line-height:1.5}
+  .rex b{color:var(--acc);font-weight:600}
 </style>
 </head>
 <body>
@@ -408,21 +427,107 @@ async function loadShipped(){
   $('#ship').innerHTML = audit + ev + bs;
 }
 
+/* Plain-English gloss per rule. Keyed by id, and every field is optional: if the
+   charter grows a rule this map has not caught up with, that rule still renders from
+   its own YAML statement rather than vanishing from the page. A UI that silently
+   omits a rule the engine is enforcing is worse than one that looks unfinished. */
+const PLAIN = {
+  R1: {
+    title: 'A confirmed leak is never “cosmetic”, and never waits',
+    means: 'If the platform has actually measured data crossing a boundary it should not have crossed, that ticket gets worked on today. It does not matter who reported it, what they pay, or how calmly they described it.',
+    fires: 'Telemetry confirms a security exposure or data loss — measured, not merely alleged in the message.',
+    then: 'Two things. It must outrank every cosmetic ticket, and it must land inside today’s served set.',
+    why: 'A confirmed exposure that nobody works on today is, from the outside, indistinguishable from one nobody noticed. Deferring it is not triage, it is a decision to leave it open.',
+    example: 'A free-tier shop paying $0 writes “probably just a display glitch, no rush.” Telemetry says 340 shops’ partial card numbers were visible. Under revenue-first that ticket scores 5th of 6 and would be dropped. This rule drags it back in.',
+  },
+  R2: {
+    title: 'Nobody waits longer than five days',
+    means: 'Once a ticket has sat for five days it gets served in the next round, whatever tier the customer is on and whatever strategy is running.',
+    fires: 'A ticket has been waiting 120 hours or more.',
+    then: 'It must be served this batch.',
+    why: 'A queue that never reaches its back end is not a queue, it is a filter. Fairness is not visible in any single decision — it only exists across a series of them, which is why this is the one rule that reads the history ledger.',
+    example: 'Verdant Home was passed over six times across 128 hours. On the third batch this rule fires and they are served, even though revenue-first still scores them fifth.',
+  },
+  R3: {
+    title: 'Legal deadlines are constraints, not priorities',
+    means: 'A statutory clock — a GDPR erasure request, say — is not weighed against revenue. It is simply met.',
+    fires: 'A legal or compliance deadline falls within 48 hours.',
+    then: 'The ticket must be served, and its severity is floored at 0.95 so it cannot be scored as minor.',
+    why: 'Priorities are things you trade off. Deadlines are things you miss or do not. Treating a regulator’s clock as one input among several is how organisations end up explaining a breach after the fact.',
+    example: 'An erasure request due in 6 hours from a mid-tier account outranks a $480k enterprise complaint, under every strategy.',
+  },
+  R4: {
+    title: 'A bad track record can dampen a claim, never erase it',
+    means: 'If someone has cried wolf before, the system discounts what they <i>say</i> — but only down to 30%, and it never discounts what the instruments <i>measured</i>.',
+    fires: 'Always. This one is a bound on the arithmetic rather than a promotion.',
+    then: 'The credibility multiplier is held between 0.30 and 1.00.',
+    why: 'Two failures to avoid. Without a floor, a poor history multiplies a real emergency to nearly zero — the boy who cried wolf still eventually meets the wolf. And because severity takes the <i>larger</i> of claim and evidence, a measurement is never reduced by who reported it. Credibility only ever breaks ties between claims nothing else supports.',
+    example: 'NorthPeak has had 2 of 9 urgency claims confirmed — credibility 0.27, clamped up to 0.30. Their “CRITICAL” carries 30% weight. But when telemetry corroborates them, the discount stops applying entirely.',
+  },
+};
+
+/* JSON conditions, said out loud. */
+function floorWhen(w){
+  if(!w) return 'always';
+  if(w.telemetry_flag === 'security_exposure') return 'telemetry confirms an exposure';
+  if(w.telemetry_flag === 'data_loss')         return 'telemetry confirms data loss';
+  if(w.telemetry_flag)                         return `telemetry flags ${esc(String(w.telemetry_flag).replace(/_/g,' '))}`;
+  if(w.category)                               return `filed under “${esc(w.category)}”`;
+  if(w.compliance_deadline_hours_lte != null)  return `statutory deadline within ${w.compliance_deadline_hours_lte}h`;
+  return esc(JSON.stringify(w));
+}
+
 function loadCharter(){
   const c = META.charter;
-  const rules=(c.rules||[]).map(r=>`<li><div class="ov">
-    <div class="h">${esc(r.id)} — ${esc(r.name)}</div>
-    <div class="s">“${esc((r.statement||'').replace(/\s+/g,' '))}”</div></div></li>`).join('');
-  const floors=(c.severity_floors||[]).map(f=>`<tr><td class="mono">${n2(f.floor)}</td>
-    <td class="mono" style="font-size:11px">${esc(JSON.stringify(f.when))}</td>
+
+  const rules = (c.rules||[]).map(r=>{
+    const p = PLAIN[r.id] || {};
+    const row = (k,v) => v ? `<div class="cr"><span>${k}</span><div>${v}</div></div>` : '';
+    return `<div class="rule">
+      <div class="rh"><span class="rid">${esc(r.id)}</span>
+        ${esc(p.title || (r.name||'').replace(/_/g,' '))}</div>
+      ${p.means ? `<p class="rm">${p.means}</p>` : ''}
+      ${row('fires when', p.fires ? esc(p.fires) : '')}
+      ${row('then',       p.then  ? esc(p.then)  : '')}
+      ${row('why',        p.why   ? p.why        : '')}
+      ${p.example ? `<div class="rex"><b>For example</b> — ${p.example}</div>` : ''}
+      <details><summary>the rule as written in config/charter.yaml</summary>
+        <div class="s" style="margin-top:6px">“${esc((r.statement||'').replace(/\s+/g,' '))}”</div>
+        <div class="note" style="margin-top:5px">${(r.clauses||[]).map(cl=>
+          `<span class="mono">${esc(cl.id)}</span> ${esc((cl.kind||'').replace(/_/g,' '))}`).join(' · ')}</div>
+      </details></div>`;
+  }).join('');
+
+  const floors = (c.severity_floors||[]).map(f=>`<tr>
+    <td>${floorWhen(f.when)}</td>
+    <td class="mono" style="color:var(--acc);white-space:nowrap">≥ ${n2(f.floor)}</td>
     <td class="why" style="margin:0">${esc(f.reason||'')}</td></tr>`).join('');
-  $('#chart').innerHTML=`<div class="sec"><h3>Non-negotiable rules — no posture can tune these</h3>
-      <ul class="rules" style="list-style:none;padding:0">${rules}</ul></div>
-    <div class="sec"><h3>Severity floors</h3>
-      <table><thead><tr><th>floor</th><th>when</th><th>why</th></tr></thead><tbody>${floors}</tbody></table>
-      <p class="note">The one place the declared side reaches into an estimate, and it is
-        deliberate: a confirmed exposure is severe by declaration regardless of how small
-        its measured blast radius is.</p></div>`;
+
+  $('#chart').innerHTML = `
+    <div class="sec" style="max-width:76ch">
+      <h3>What the charter is</h3>
+      <p>Six strategies decide how this system weighs revenue against fairness against
+        speed. You can pick any of them. The charter is the short list of things that
+        stay true <b>whichever one you pick</b> — and neither a strategy nor the
+        language model can edit it.</p>
+      <p style="margin-top:9px">It is a <b>floor, not a preference</b>. When a rule
+        fires it moves the ticket to the <i>lowest</i> position that satisfies the
+        rule — never to the top. So a rule can say “this cannot be last”; no rule can
+        say “this should be first.” That keeps the cost of every override visible: you
+        can see exactly which ticket got displaced and by how far, instead of one rule
+        quietly becoming the whole ranking.</p>
+    </div>
+
+    <div class="sec"><h3>The four rules</h3>${rules}</div>
+
+    <div class="sec" style="max-width:82ch"><h3>Severity floors — when the charter overrules the measurement</h3>
+      <p class="note" style="margin:0 0 10px">Everything else feeding a severity score
+        is measured. These four are <b>asserted</b>, and they live here in the open
+        rather than as a constant buried in the scoring code. The reason: two users'
+        payment details leaking is not a 0.05-severity event just because only two
+        users were counted. Reach is the wrong measure of a leak.</p>
+      <table><thead><tr><th>when</th><th>severity is at least</th><th>because</th></tr></thead>
+      <tbody>${floors}</tbody></table></div>`;
 }
 
 /* ── boot ──────────────────────────────────────────────────────────── */
