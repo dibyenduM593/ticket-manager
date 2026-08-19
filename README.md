@@ -64,6 +64,26 @@ python scripts/run_demo.py
 With an API key in `.env` (see `.env.example`), drop `--no-llm` for the full pipeline:
 conflict detection, posture advice, four adversarial critics, and adjudication.
 
+### The demo front end
+
+```bash
+python web/server.py
+```
+
+Then open <http://localhost:8000>. Type up to five tickets, set the capacity, and
+watch the ranking, the charter overrides, and all six postures side by side.
+
+Two deliberate constraints. It is **stdlib only** — no Flask, no FastAPI, nothing to
+install — because a front end that needs `pip install` would undercut the zero-setup
+claim on the first line of this README. And it **imports the real `src/triage/`
+modules** rather than porting the scorer to JavaScript: a second implementation is
+free to silently disagree with the first, and then the page is demonstrating a system
+that does not exist. Every number on screen came out of the same code `triage run`
+calls, so the page cannot show a ranking the CLI would not produce.
+
+The LLM stages never run there. It serves the deterministic floor, and says so in a
+banner rather than letting you assume otherwise.
+
 ### Every command
 
 | Command | What it does | Needs a key |
