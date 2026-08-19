@@ -25,6 +25,44 @@ convention held up by review rather than by CI.
 
 ---
 
+## Every weight and every piece of context here is mine
+
+I generated all of it. Not one number in this repository was learned from a public
+dataset, lifted from a benchmark, or copied from another organisation's triage
+history. That is a design decision, not a shortcut, and it is worth stating plainly
+because the weights are the part of this system that carries the ethics.
+
+**The weights** — every declared value in `config/`:
+
+| File | What I set |
+|---|---|
+| [`config/postures/*.yaml`](config/postures) | Six strategies. The four axis weights in each, the `revenue_mix` dial, the rationale, and the cost each posture admits to paying. |
+| [`config/valuation.yaml`](config/valuation.yaml) | Every unit-to-worth curve: tier values, the $500k ARR and $12k/h GMV saturation points, the 0.6 ARR-vs-GMV blend, the 120-hour fairness ceiling, the 96-hour speed scale. |
+| [`config/charter.yaml`](config/charter.yaml) | The non-negotiable floors — which conditions are severe by declaration, which rules no posture may tune, and the credibility clamp bounds. |
+| [`config/company_state*.yaml`](config) | The situation the advisor reasons about, per batch. |
+
+**The context** — every input the system reads:
+
+| File | What I set |
+|---|---|
+| [`scripts/seed_history.py`](scripts/seed_history.py) | Six merchant claim/confirmation profiles and a per-category shape, from a fixed seed. NorthPeak confirming 2 of 9 urgency claims — a credibility of 0.27 — is a track record I chose so the discount would have something to bite on. |
+| [`data/eval/batch_*.json`](data/eval) | Three batches of tickets, and all 21 planted conflicts, hand-authored so recall is measured against contradictions known to be present. |
+| [`data/sources/{crm,telemetry}.json`](data/sources) | Account records and instrument readings, written to disagree with the tickets in specific, chosen ways. |
+
+Two things follow from this, and both cut against me as much as for me:
+
+1. **The measurements are only as honest as the fixture.** Recall of 9/21 is recall
+   against conflicts I planted. It is a real measurement of the detector and it is
+   not a claim about the world.
+2. **The values are not defensible by appeal to data, and were never going to be.**
+   No dataset can tell you whether a $480k account outranks 2,000 free users.
+   Declaring the answer in a file with my name on the commit is the honest version
+   of a judgment that every triage system makes and most of them bury in a
+   coefficient. The reasoning for generating rather than importing is in
+   [Why the data is synthetic](#why-the-data-is-synthetic-and-which-real-datasets-were-rejected).
+
+---
+
 ## Quickstart
 
 No API key needed — the deterministic core is the whole system's floor, and it runs
@@ -374,7 +412,7 @@ Built:
   append-only decision log
 - Multi-batch sequential run, planted-conflict eval, stability harness, and a
   one-command regeneration of everything in `reports/`
-- 134 tests: deterministic core, scorer and credibility maths, the eval's own matcher,
+- 138 tests: deterministic core, scorer and credibility maths, the eval's own matcher,
   the LLM contract (including hallucinated-entity and hostile-response cases),
   behavioural guarantees, and the demo server's HTTP endpoints
 - CI on 3.11 and 3.13 with **no API key configured**, so any accidental reach for the
@@ -425,6 +463,57 @@ Not done:
 ---
 
 ## What I would do next
+
+The three below are the ones I would build first, in this order.
+
+**1. A real repair loop on the LLM stages.** Today the loop in
+[`llm/client.py`](src/triage/llm/client.py) repairs exactly one class of failure: it
+notices a `temperature`-deprecation 400, drops the parameter, and retries without
+spending an attempt. Everything else is either blind exponential backoff (three
+attempts, transient errors only) or immediate surrender — `_validate()` raises
+`LLMUnavailable` the moment a forced tool call comes back non-conforming, and the
+stage is reported as not having run. That is honest, and it is coarse: a response
+that violates one field of the schema is thrown away whole, along with the fields
+that were fine. The repair loop should feed the validator's own error message back
+as a bounded second turn — *you returned rank 9 for a batch of 6; correct that field
+and nothing else* — and only then degrade. Bounded, because an unbounded repair loop
+is a model arguing with a schema until one of them gives, and the schema has to win.
+Each repair attempt belongs in the report next to the stage that needed it, so the
+cost of the loop is visible rather than absorbed.
+
+**2. Ticket embeddings, managed as a real index.** Correlation currently has two
+paths: deterministic clustering on identical error signature + region + a 6-hour
+window in [`correlate.py`](src/triage/correlate.py), and one LLM call that can name a
+shared root cause across tickets whose signatures differ. Neither survives a
+paraphrase, and neither can see past the current batch — two merchants describing the
+same outage in different words are two tickets, and last week's identical incident is
+invisible. Embedding ticket text and holding the vectors in a persistent index would
+give: clustering that survives rewording, near-duplicate detection against the
+resolved history rather than only within the batch, and retrieval of the closest
+prior tickets as evidence for the estimator. The management is most of the work, not
+the embedding call — where the vectors live, when they are recomputed, how they are
+versioned when the model changes, and how a stale index is detected rather than
+quietly trusted. The rule that keeps it honest is the one already in force
+everywhere else: an embedding is evidence for estimation, never a value. Nearest
+neighbours may inform how severe something is; they may never inform what it is
+worth.
+
+**3. A read-accuracy counter in `state/`.** `state/` already carries the values a
+run needs to remember — `customers.json`, `categories.json`, `ledger.json`,
+`meta.json` — and nothing in it yet records how well the system *read* the tickets
+it was given. It should. The counter tracks, per batch and cumulatively, how many
+tickets were parsed into an estimate that later proved right: the sanitiser caught
+the injection that was actually there, the extracted category matched the resolved
+one, the claimed urgency was correctly confirmed or correctly discounted. Written
+the same way every other number in `state/` is written — derived by counting
+resolutions, never set by hand — so it is a measurement rather than a self-report.
+Two things fall out of having it. The report can state a read-accuracy figure next
+to the ranking instead of implying accuracy by staying silent. And credibility stops
+being one-directional: today it scores only the merchant's track record, and a
+system that discounts a reporter without ever scoring its own reading of that
+reporter is grading one side of an exchange it is party to.
+
+The rest, roughly in order of how much they would change:
 
 - **Run both measurements against a live model.** The 9/21 recall figure is the
   rule-based detector's, and the whole argument for the LLM stage is that it closes
