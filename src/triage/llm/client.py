@@ -7,9 +7,13 @@ Design choices worth defending:
   with anything but a conforming object, so parsing is not a failure mode and injected
   prose has no channel to become a decision.
 
-* **Temperature 0.** Not because it makes the model deterministic -- it does not,
-  quite -- but because the residual variation is then small enough to measure, which
-  is what the stability numbers in the README report.
+* **Temperature 0 where the model still accepts it.** Not because it makes the model
+  deterministic -- it does not, quite -- but because the residual variation is then
+  small enough to measure, which is what the stability numbers in the README report.
+  Newer models reject the parameter outright; the client drops it on the first such
+  refusal rather than carrying a model list that goes stale. Sampling variance is
+  then the provider's default, which the stability harness measures rather than
+  assumes.
 
 * **Prompt caching on the system block.** The system prompt carries the charter, the
   posture rationales and the output contract, and it is identical across the four
@@ -87,6 +91,9 @@ class LLMClient:
         self.api_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
         self.calls: list[dict[str, Any]] = []
         self._client = None
+        #: Switched off permanently the first time the API reports that
+        #: `temperature` is deprecated for this model. See _call().
+        self._send_temperature = True
 
     # ------------------------------------------------------------------ properties
 
@@ -168,7 +175,11 @@ class LLMClient:
                 resp = client.messages.create(
                     model=self.model,
                     max_tokens=max_tokens,
-                    temperature=0,
+                    # Newer models reject `temperature` outright; older ones need it
+                    # pinned to 0. `_send_temperature` starts True and is switched off
+                    # permanently the first time the API says the parameter is
+                    # deprecated, so a model list never has to be maintained here.
+                    **({"temperature": 0} if self._send_temperature else {}),
                     system=[
                         {
                             "type": "text",
@@ -191,6 +202,22 @@ class LLMClient:
                 )
             except (anthropic.APIStatusError, anthropic.APIConnectionError, anthropic.APITimeoutError) as exc:
                 last = exc
+                status = getattr(exc, "status_code", None)
+                message = str(exc)
+
+                # A deprecated parameter is not a transient failure -- retrying the
+                # identical body sleeps twice and fails anyway. Drop the parameter and
+                # go again immediately, without spending one of the attempts.
+                if status == 400 and "temperature" in message and self._send_temperature:
+                    self._send_temperature = False
+                    continue
+
+                # Other 4xx (bad schema, unknown model, bad key) are equally
+                # deterministic. Backing off three times only delays the fallback the
+                # caller is going to take regardless.
+                if status is not None and 400 <= status < 500 and status not in (408, 409, 429):
+                    break
+
                 if attempt == MAX_ATTEMPTS - 1:
                     break
                 time.sleep((2 ** attempt) + random.random())

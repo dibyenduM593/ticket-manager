@@ -32,6 +32,10 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "src"))
 
+from triage.env import load_dotenv  # noqa: E402
+
+load_dotenv()
+
 from triage import correlate, paths, scorer  # noqa: E402
 from triage.config import load_charter, load_company_state, load_posture, load_postures  # noqa: E402
 from triage.models import (  # noqa: E402

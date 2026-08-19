@@ -2,6 +2,12 @@
 
 All tests live under tests/, and only here -- pyproject.toml pins
 `testpaths = ["tests"]`, so a test file dropped anywhere else silently never runs.
+
+The key is stripped from the environment for the whole session -- see
+`_no_live_api_calls`. That is enforcement, not decoration: `triage.cli` and the demo
+server both load `.env` at import now, so without this a contributor with a key on
+disk would silently run a DIFFERENT suite from CI, spending money and passing tests
+that CI cannot execute. Tests that exercise the LLM path must inject a fake client.
 """
 
 from __future__ import annotations
@@ -29,6 +35,21 @@ from triage.pipeline import Context
 from triage.state import State
 
 AS_OF = datetime(2026, 8, 19, 14, 0, tzinfo=timezone.utc)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _no_live_api_calls():
+    """No test may reach the API, whatever is sitting in .env or the shell.
+
+    autouse and session-scoped so it cannot be forgotten. `LLMClient.available` is
+    then False everywhere, which is the same state CI runs in -- the suite proves the
+    deterministic floor, and it must prove the same thing on every machine.
+    """
+    import os
+
+    for var in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"):
+        os.environ.pop(var, None)
+    yield
 
 
 @pytest.fixture

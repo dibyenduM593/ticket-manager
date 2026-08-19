@@ -44,8 +44,14 @@ sys.path.insert(0, str(REPO / "src"))
 from pydantic import BaseModel, Field  # noqa: E402
 
 from triage.config import load_charter  # noqa: E402
+from triage.env import load_dotenv  # noqa: E402
 from triage.estimation import urgency_intensity_heuristic  # noqa: E402
 from triage.llm.client import LLMClient, LLMUnavailable  # noqa: E402
+
+#: This module constructs the client, so it loads the key itself rather than
+#: trusting whoever imported it to have done so. Importing it from a script or a
+#: test must not silently mean "no key", which presents as a capability failure.
+load_dotenv()
 
 CATEGORIES = [
     "checkout_failure",

@@ -27,6 +27,7 @@ from . import evaluate as evaluate_mod
 from . import paths, report as report_mod
 from . import stability as stability_mod
 from .config import load_postures
+from .env import load_dotenv
 from .models import PostureAdvice, Posture
 from .pipeline import (
     Context,
@@ -57,6 +58,10 @@ def _utf8_console() -> Console:
             pass
     return Console(file=stream, legacy_windows=False)
 
+
+#: Before any client is constructed -- a key in .env must reach os.environ or
+#: the promise in the README is false. Real environment still wins.
+load_dotenv()
 
 app = typer.Typer(add_completion=False, help=__doc__)
 console = _utf8_console()
