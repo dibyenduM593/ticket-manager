@@ -40,6 +40,7 @@
   .banner.info b{color:var(--acc)}
 
   .tk{display:flex;gap:9px;margin-bottom:9px;align-items:flex-start}
+  select.from{margin-top:4px;font-size:11.5px;padding:4px 7px;color:var(--dim)}
   .num{width:22px;height:22px;border-radius:6px;background:var(--panel2);
        border:1px solid var(--line);display:grid;place-items:center;flex:none;
        font:600 11px var(--mono);color:var(--faint);margin-top:5px}
@@ -200,6 +201,7 @@ const money = x => !x ? '$0' : x >= 1000 ? '$'+Math.round(x/1000)+'k' : '$'+Math
 
 let META=null, LAST=null;
 let TEXT = ['','','','',''];
+let FROM = ['','','','',''];  // customer_id per ticket, '' = unknown sender
 
 const EXAMPLE = [
   "Checkout is completely down for us. We are losing thousands a minute. This is CRITICAL, please escalate immediately.",
@@ -210,14 +212,21 @@ const EXAMPLE = [
 ];
 
 function drawTickets(){
+  const opts = m => `<option value="">— unknown sender (0.50 prior) —</option>` +
+    (META.merchants||[]).map(x=>`<option value="${esc(x.id)}" ${m===x.id?'selected':''}>${esc(x.name)}
+       · ${esc(x.tier)} · ${x.credibility.toFixed(2)} credibility</option>`).join('');
   $('#tickets').innerHTML = TEXT.map((t,i)=>`
     <div class="tk"><span class="num">${i+1}</span>
-      <textarea data-i="${i}" rows="2"
-        placeholder="${i===0?'What did the merchant write?':'…'}">${esc(t)}</textarea>
+      <div style="flex:1;min-width:0">
+        <textarea data-i="${i}" rows="2"
+          placeholder="${i===0?'What did the merchant write?':'…'}">${esc(t)}</textarea>
+        <select class="from" data-i="${i}">${opts(FROM[i])}</select>
+      </div>
     </div>`).join('');
-  $$('#tickets textarea').forEach(el=>{
-    el.addEventListener('input', e => TEXT[e.target.dataset.i] = e.target.value);
-  });
+  $$('#tickets textarea').forEach(el=>
+    el.addEventListener('input', e => TEXT[e.target.dataset.i] = e.target.value));
+  $$('#tickets select.from').forEach(el=>
+    el.addEventListener('change', e => FROM[e.target.dataset.i] = e.target.value));
 }
 
 /* ── ranking ───────────────────────────────────────────────────────── */
@@ -246,7 +255,17 @@ function renderOrdering(o, cap){
 }
 
 /* ── what was read vs what was simulated ───────────────────────────── */
-function renderRead(rows, note, usedLLM){
+function renderRead(rows, note, usedLLM, ordering){
+  // Credibility is HISTORY, not a reading of this ticket, so it is shown on the
+  // read side with the evidence behind it rather than among the invented figures.
+  const byId = Object.fromEntries((ordering?.ranked||[]).map(r=>[r.ticket_id,r.facts]));
+  const evid = i => (byId['TKT-U'+(i+1)]||{}).credibility_evidence || '';
+  const attr = i => !!(byId['TKT-U'+(i+1)]||{}).attributed;
+  const cred = i => {
+    const f = byId['TKT-U'+(i+1)];
+    if(!f) return '—';
+    return `${n2(f.credibility)}${f.attributed?'':' (prior)'}`;
+  };
   const cards = rows.map((r,i)=>`
     <div class="rd">
       <div class="msg"><span class="tid">TKT-U${i+1}</span>${esc(r.message)}</div>
@@ -254,6 +273,8 @@ function renderRead(rows, note, usedLLM){
         <div class="half h-read">
           <h4>read from the text — source A</h4>
           <div class="f"><span>merchant</span><span>${esc(r.merchant)}</span></div>
+          <div class="f"><span>credibility</span><span>${cred(i)}</span></div>
+          ${evid(i)?`<div class="note" style="margin:2px 0 0">${esc(evid(i))}</div>`:''}
           <div class="f"><span>category</span><span>${esc(r.category)}</span></div>
           <div class="f"><span>they say</span><span>${esc(r.stated_urgency)}</span></div>
           <div class="f"><span>intensity</span><span>${n2(r._read.intensity)}</span></div>
@@ -262,8 +283,10 @@ function renderRead(rows, note, usedLLM){
           ${r._read.understating?'<span class="tag t-und">understating</span>':''}
         </div>
         <div class="half h-sim">
-          <h4>simulated instruments — B, C, D</h4>
-          <div class="f"><span>tier / ARR</span><span>${esc(r.tier)} · ${money(r.arr)}</span></div>
+          <h4>${attr(i) ? 'instruments simulated · billing real'
+                        : 'simulated instruments — B, C, D'}</h4>
+          <div class="f"><span>tier / ARR${attr(i)?' <b style="color:var(--ok)">real</b>':''}</span>
+            <span>${esc(r.tier)} · ${money(r.arr)}</span></div>
           <div class="f"><span>users hit</span><span>${r.users_affected}</span></div>
           <div class="f"><span>error rate</span><span>${n2(r.error_rate)}</span></div>
           <div class="f"><span>GMV/h</span><span>${money(r.gmv_at_risk_per_hour)}</span></div>
@@ -281,8 +304,11 @@ function renderRead(rows, note, usedLLM){
     ${cards}
     <p class="note"><b>The two halves are not the same kind of thing.</b> The left is
       genuinely read from what the merchant wrote — that is source A, and reading it
-      is what a language model is for here. The right is <b>invented</b>, because you
-      invented the merchant and no instruments are attached to it. In a real run those
+      is what a language model is for here. The right is <b>invented</b> wherever the
+      sender is unknown, because you invented that merchant and no instruments are
+      attached to it. Name a real sender and their tier, ARR and claim history come
+      from the actual records instead — marked <b style="color:var(--ok)">real</b> —
+      while the instrument readings stay simulated. In a real run those
       come from <code>telemetry.json</code>, <code>crm.json</code> and the ledger, which
       no model writes to.<br><br>
       That separation is the point rather than a caveat: the demo's centrepiece is a
@@ -324,7 +350,8 @@ function renderConflicts(cs){
 /* ── run ───────────────────────────────────────────────────────────── */
 async function run(){
   $('#err').innerHTML='';
-  const texts = TEXT.map(t=>({message:t})).filter(t=>t.message.trim());
+  const texts = TEXT.map((t,i)=>({message:t, customer_id:FROM[i]||''}))
+                    .filter(t=>t.message.trim());
   if(!texts.length){ $('#err').innerHTML=`<div class="err">Write at least one ticket.</div>`; return; }
   $('#go').disabled = true;
   $('#out').innerHTML = `<div class="empty">Reading the tickets, then scoring…</div>`;
@@ -337,7 +364,7 @@ async function run(){
     LAST=d;
     const o = d.orderings[$('#posture').value];
     $('#out').innerHTML = renderOrdering(o,d.capacity)
-      + renderRead(d.resolved, d.autofill_note, d.autofill_used_llm)
+      + renderRead(d.resolved, d.autofill_note, d.autofill_used_llm, o)
       + renderMatrix(d.orderings) + renderConflicts(d.conflicts);
   } finally { $('#go').disabled = false; }
 }
@@ -415,8 +442,8 @@ function loadCharter(){
     `<div class="empty">No committed reports. Run <code>python scripts/run_demo.py</code>.</div>`);
 
   $('#go').onclick  = run;
-  $('#ex1').onclick = () => { TEXT = [...EXAMPLE]; drawTickets(); run(); };
-  $('#clr').onclick = () => { TEXT=['','','','','']; drawTickets();
+  $('#ex1').onclick = () => { TEXT = [...EXAMPLE]; FROM = ['','','','','']; drawTickets(); run(); };
+  $('#clr').onclick = () => { TEXT=['','','','','']; FROM=['','','','','']; drawTickets();
                               $('#out').innerHTML=`<div class="empty">Cleared.</div>`; };
   $('#posture').onchange = () => { if(LAST) run(); };
   $$('.tab').forEach(t=>t.onclick=()=>{

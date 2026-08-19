@@ -190,7 +190,11 @@ def _by_llm(client: LLMClient, live: list[tuple[int, str]]) -> list[dict]:
         schema=AutofillResult,
         tool_name="record_demo_fixtures",
         tool_description="Record the claimed reading and the simulated instrument readings per ticket.",
-        max_tokens=4096,
+        # Five tickets x two objects x ~20 fields, each with a rationale string. At
+        # 4096 the tool_use block was occasionally truncated mid-object, which
+        # surfaces as "non-conforming object" and drops the whole batch to keyword
+        # heuristics -- a rare, confusing, and entirely avoidable degradation.
+        max_tokens=8192,
     )
     by_index = {t.index: t for t in result.tickets}
     rows = []

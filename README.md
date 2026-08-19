@@ -74,15 +74,23 @@ Then open <http://localhost:8000>. Write up to five tickets in plain English —
 page reads them into structured fields for you — and watch the ranking, the charter
 overrides, and all six postures side by side.
 
+Each ticket has a **sender** dropdown. Leave it unset and the merchant is invented at
+the 0.5 credibility prior. Name one of the six real merchants and their actual billing
+record and claim history apply, which is the fastest way to see the credibility term
+work: send *identical text* from NorthPeak (2 of 9 urgency claims ever confirmed) and
+from soloartisan (2 of 2) and watch the two diverge.
+
 **What reads the tickets, and what does not.** Turning free text into four sources is
 a reading step, done by the model when a key is present and by keyword heuristics when
 it is not. It never touches the ranking: scoring, the charter and the ordering stay
 deterministic. And the page splits every ticket into what was *read* and what was
 *invented*, because those are not the same kind of claim. Category and stated urgency
-are genuinely read from the words — that is source A. Tier, ARR, users affected, error
-rate, exposure and waiting time are **simulated**, because you invented the merchant
-and no instruments are attached to it; a real run reads those from `telemetry.json`,
-`crm.json` and the ledger, which no model writes to. That separation is load-bearing
+are genuinely read from the words — that is source A. Users affected, error rate,
+exposure and waiting time are **simulated**, because no instruments are attached to a
+ticket you just typed; a real run reads those from `telemetry.json` and the ledger,
+which no model writes to. Tier and ARR are simulated only while the sender is unknown —
+name a real merchant and the actual CRM record is used instead, and the page marks it
+`real` rather than leaving you to guess. That separation is load-bearing
 rather than pedantic: the demo's centrepiece is a merchant saying *"no rush"* while
 telemetry reports a confirmed exposure, and deriving the instruments from the ticket
 text would make that contradiction impossible to express.
@@ -113,6 +121,38 @@ rather than letting you assume.
 | `triage eval` | conflict recall against the planted labels | no (`--no-llm`) |
 | `triage stability --runs 10` | what moves when the same batch is rerun | no (`--no-llm`) |
 | `scripts/record_cassettes.py` | records cassettes so `--replay` works | **yes** |
+
+---
+
+## Where each requirement is satisfied
+
+So a reviewer does not have to hunt.
+
+| Asked for | Where it lives | Notes |
+|---|---|---|
+| ≥5 tickets with conflicting signals | [`data/batches/`](data/batches/) | 6 tickets per batch, 3 batches, 21 hand-authored contradictions |
+| ≥2 independent, contradicting sources | `ticket` · `telemetry` · `crm` · `resolution history` | 4 sources; the table below names how each one disagrees |
+| ≥3 prioritisation strategies, ranked, with reasoning | [`config/postures/`](config/postures/) → `triage plan` | 6 postures; §5 of every report ranks all of them with the trade each makes |
+| Defends its choice against the alternatives | §5 and §6 of every batch report | §6 is counterfactual regret: the specific tickets that move, and what that costs in dollars or waiting |
+| Structured report per batch | [`reports/batch_42.md`](reports/batch_42.md) | 8 sections; conflicts found → ranking → overrides → strategy ranking → regret → critique → escalations |
+| Noticed the conflict | §2 of every report | plus `triage eval`, which measures detection against the planted labels rather than asserting it |
+
+The five severity indicators the brief names, and where each enters the decision:
+
+| Indicator | Enters as |
+|---|---|
+| Customer account value (free → enterprise) | `tier` and `arr` from CRM, blended in `valuation.account_value()` |
+| Stated urgency in the message | `stated_urgency` × credibility → the `claimed` half of severity |
+| Historical resolution time for similar issues | `category_median_hours` from resolution history → the `speed` axis |
+| **Current system load** | **posture selection, not per-ticket scoring** — see below |
+| Whether it blocks a paying workflow | `blocks_paying_workflow`, claimed *and* observed, kept as separate fields so they can disagree |
+
+System load is deliberately not a per-ticket field. Load is a property of the
+platform, not of any ticket, so it cannot make one ticket more severe than another —
+what it should change is *which strategy you are running*. At ≥85% load with an open
+incident the agent recommends `crisis_mode` and says so in §5; it also sets capacity,
+which decides how many tickets get served at all. Making it a per-ticket term would
+have been easier to point at and wrong.
 
 ---
 

@@ -88,9 +88,18 @@ def _build_context(payload: dict) -> tuple[Context, list[str]]:
     ledger_skips: dict[str, int] = {}
     waited: dict[str, float] = {}
 
+    #: Attributing a ticket to a merchant who actually exists is the difference
+    #: between a demo where credibility is inert and one where it bites. A known id
+    #: brings its REAL billing record and its REAL claim history, so the same words
+    #: from NorthPeak (2 of 9 claims confirmed) and from soloartisan (2 of 2) are
+    #: scored differently -- which is the entire point of the credibility term.
+    real = SourceBundle.load()
+
     for i, r in enumerate(rows):
         tid = f"TKT-U{i + 1}"
-        cid = f"cust-u{i + 1}"
+        claimed_cid = (r.get("customer_id") or "").strip()
+        known = claimed_cid in real.crm
+        cid = claimed_cid if known else f"cust-u{i + 1}"
         body = (r.get("message") or "").strip()
         if not body:
             continue
@@ -133,12 +142,21 @@ def _build_context(payload: dict) -> tuple[Context, list[str]]:
             security_exposure=bool(r.get("security_exposure")),
             data_loss=bool(r.get("data_loss")),
         )
-        crm[cid] = CrmRecord(
-            customer_id=cid,
-            name=(r.get("merchant") or f"merchant {i + 1}").strip(),
-            tier=r.get("tier") or "growth",
-            arr=_f(r.get("arr"), 0.0),
-        )
+        if known:
+            # Real billing record wins outright. Nothing the model imagined about
+            # tier or ARR may overwrite what the CRM actually says.
+            crm[cid] = real.crm[cid]
+            notes.append(
+                f"{tid}: attributed to {real.crm[cid].name} -- real tier, ARR and "
+                f"claim history apply; the model's guesses at those were discarded"
+            )
+        else:
+            crm[cid] = CrmRecord(
+                customer_id=cid,
+                name=(r.get("merchant") or f"merchant {i + 1}").strip(),
+                tier=r.get("tier") or "growth",
+                arr=_f(r.get("arr"), 0.0),
+            )
 
     if not tickets:
         raise ValueError("every ticket was blank")
@@ -160,10 +178,12 @@ def _build_context(payload: dict) -> tuple[Context, list[str]]:
     company = load_company_state()
     ctx = Context(batch=batch, company=company, sources=SourceBundle(telemetry, crm), state=state)
     ctx.capacity = max(0, int(_f(payload.get("capacity"), 3.0)))
-    notes.append(
-        "credibility sits at the 0.5 prior for every ticket here -- these merchants "
-        "have no resolution history, and the system says so rather than assuming."
-    )
+    if any(t.customer_id.startswith("cust-u") for t in tickets):
+        notes.append(
+            "unattributed tickets sit at the 0.5 credibility prior -- an invented "
+            "merchant has no claim history, and saying so is more honest than "
+            "defaulting to trust or to suspicion"
+        )
     return ctx, notes
 
 
@@ -173,10 +193,26 @@ def _run(payload: dict) -> dict:
     #: half and the simulated half must not be confused.
     fill_note, used_llm = None, False
     if payload.get("autofill"):
-        texts = [t.get("message", "") for t in payload.get("tickets", [])[:5]]
-        rows, fill_note, used_llm = autofill(texts)
+        sent = [t for t in payload.get("tickets", [])[:5] if (t.get("message") or "").strip()]
+        rows, fill_note, used_llm = autofill([t.get("message", "") for t in sent])
         if not rows:
             raise ValueError("write at least one ticket")
+        # The sender is chosen by the person using the page, not read out of the
+        # prose. Autofill returns fresh rows, so carry the attribution across --
+        # dropping it here silently reverted every ticket to an invented merchant
+        # at the 0.5 prior, which looks like the credibility term doing nothing.
+        known_crm = SourceBundle.load().crm
+        for row, original in zip(rows, sent):
+            cid = original.get("customer_id")
+            if not cid:
+                continue
+            row["customer_id"] = cid
+            if cid in known_crm:
+                # Overwrite what the model imagined about identity and billing, so
+                # the panel showing "what was read" cannot display an invented name
+                # and ARR beside a ticket whose real record the scorer actually used.
+                rec = known_crm[cid]
+                row["merchant"], row["tier"], row["arr"] = rec.name, rec.tier.value, rec.arr
         payload = {**payload, "tickets": rows}
 
     ctx, notes = _build_context(payload)
@@ -243,6 +279,8 @@ def _ordering_json(ordering, est_by_id, names: dict[str, str] | None = None) -> 
                     "waiting_hours": round(est.waiting_hours, 1),
                     "times_skipped": est.times_skipped,
                     "credibility": round(est.credibility, 3),
+                    "credibility_evidence": est.credibility_evidence,
+                    "attributed": not est.customer_id.startswith("cust-u"),
                     "security_exposure": est.security_exposure,
                     "data_loss": est.data_loss,
                     "category": est.category,
@@ -302,8 +340,21 @@ class Handler(BaseHTTPRequestHandler):
             return self._file(WEB / "index.html", "text/html; charset=utf-8")
         if self.path == "/api/meta":
             client = LLMClient()
+            bundle = SourceBundle.load()
+            st = State.load(paths.state_dir())
+            merchants = []
+            for cid, rec in bundle.crm.items():
+                h = st.customers.get(cid)
+                claims = getattr(h, "urgency_claims", 0) if h else 0
+                confirmed = getattr(h, "confirmed_severe", 0) if h else 0
+                merchants.append({
+                    "id": cid, "name": rec.name, "tier": rec.tier.value, "arr": rec.arr,
+                    "credibility": round((confirmed + 1) / (claims + 2), 2),
+                    "claims": claims, "confirmed": confirmed,
+                })
             return self._json(
                 {
+                    "merchants": sorted(merchants, key=lambda m: -m["arr"]),
                     "llm_available": client.available,
                     "model": client.model,
                     "categories": CATEGORIES,
